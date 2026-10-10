@@ -15,6 +15,7 @@ document.addEventListener('click',e=>{
  const b=e.target.closest('button,a');if(!b)return;
  if(b.dataset.page){e.preventDefault();if(b.dataset.page==='mods'){catalogType='mods';catalogTargetPackId=null}go(b.dataset.page);return}
  if(b.dataset.pack){selectedPack=b.dataset.pack;packTab='mods';go('pack');return}
+ if(b.dataset.packSettings){selectedPack=b.dataset.packSettings;packTab='options';go('pack');return}
  if(b.dataset.category){category=b.dataset.category;render();return}
  if(b.dataset.add||b.dataset.mod){addModal(b.dataset.add||b.dataset.mod);return}
  if(b.dataset.install){const p=state.packs.find(p=>p.id===b.dataset.target),m=mods.find(m=>m.id===b.dataset.install);if(p&&m&&p.loader===m.loader&&p.version===m.version&&!p.mods.includes(m.id)){p.mods.push(m.id);save();modal.close();render();toast(`${m.name} добавлен в «${p.name}»`)}return}

@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   showDownloadedFile: path => ipcRenderer.invoke('catalog:show-file', path),
   openDownloadsFolder: () => ipcRenderer.invoke('catalog:open-downloads'),
   removeInstalledFile: (file, profileId) => ipcRenderer.invoke('catalog:remove-installed', file, profileId),
+  listInstalledFiles: profileId => ipcRenderer.invoke('catalog:list-installed', profileId),
+  openWorldsFolder: profileId => ipcRenderer.invoke('game:open-worlds-folder', profileId),
   minecraftVersions: (refresh = false) => ipcRenderer.invoke('versions:list', refresh),
   installMinecraft: version => ipcRenderer.invoke('minecraft:install', version),
   minecraftInstallStatus: version => ipcRenderer.invoke('minecraft:status', version),

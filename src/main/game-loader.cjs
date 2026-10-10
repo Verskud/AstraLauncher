@@ -8,12 +8,20 @@ const loaders = new Set(['Vanilla', 'Fabric', 'Quilt', 'Forge', 'NeoForge']);
 function validateProfile(profile) {
   if (!profile || typeof profile.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(profile.id) && profile.id !== 'essentials') throw new Error('Некорректная сборка.');
   if (typeof profile.version !== 'string' || !idPattern.test(profile.version) || !loaders.has(profile.loader)) throw new Error('Некорректная версия или загрузчик.');
-  if (profile.loader === 'NeoForge' && !supportsNeoForge(profile.version)) throw new Error(`NeoForge не подходит для Minecraft ${profile.version}. Выбери Forge в параметрах сборки. В Astra NeoForge доступен с 1.20.2.`);
+  if (!loaderAvailable(profile.version, profile.loader)) throw new Error(`${profile.loader} не подходит для Minecraft ${profile.version}. Выбери Forge или Vanilla в параметрах сборки.`);
   return profile;
 }
 function supportsNeoForge(version) {
   const match = /^1\.(\d+)(?:\.(\d+))?$/.exec(version);
   return !!match && (Number(match[1]) > 20 || Number(match[1]) === 20 && Number(match[2] || 0) >= 2);
+}
+function loaderAvailable(version, loader) {
+  if (loader === 'NeoForge') return supportsNeoForge(version);
+  if (loader === 'Fabric' || loader === 'Quilt') {
+    const match = /^1\.(\d+)(?:\.(\d+))?$/.exec(version);
+    return !!match && Number(match[1]) >= 14;
+  }
+  return true;
 }
 function instanceFolder(userData, id) { return path.join(userData, 'instances', validateProfile({ id, version: '1.21.1', loader: 'Vanilla' }).id); }
 function mavenPath(name) {
@@ -100,4 +108,4 @@ async function runJava(java, args, cwd) {
     child.on('close', code => code === 0 ? resolve() : reject(new Error(`Установщик завершился с кодом ${code}. ${output.slice(-1200)}`)));
   });
 }
-module.exports = { validateProfile, instanceFolder, getLoaderProfile, mavenPath };
+module.exports = { validateProfile, instanceFolder, getLoaderProfile, mavenPath, loaderAvailable };

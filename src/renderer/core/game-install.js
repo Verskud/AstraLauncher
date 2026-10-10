@@ -77,6 +77,8 @@ document.addEventListener('click', async event => {
 });
 
 render();
+refreshInstalledAll();
+window.addEventListener('focus', refreshInstalledAll);
 
 window.astraDesktop.onGameProgress(progress => {
   if (progress.phase === 'java' || progress.phase === 'loader' || progress.phase === 'starting') toast(progress.message);

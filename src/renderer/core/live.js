@@ -175,11 +175,12 @@ document.addEventListener('submit', async event => {
     button.disabled = true; button.textContent = 'Скачиваем…';
     try {
       const result = await window.astraDesktop.downloadProject({ source: item.source, kind: item.kind, id: item.id, gameVersion: profile?.version || '', loader: profile && profile.loader !== 'Vanilla' ? profile.loader.toLowerCase() : '', profileId: profile?.id || '' });
-      state.downloads = [{ ...result, name: item.name, source: item.source }, ...(result.installedDependencies||[]), ...(state.downloads || [])].slice(0, 100);
-      save(); modal.close(); toast(`${profile?'Установлено в сборку':'Скачано'}: ${result.filename}`);
-      if (profile) { selectedPack=profile.id; packTab=item.kind; go('pack'); }
+      rememberDownloads([{ ...result, name: item.name, source: item.source }, ...(result.installedDependencies||[])]);
+      modal.close(); toast(`${profile?'Установлено в сборку':'Скачано'}: ${result.filename}`);
+      if (profile) { await refreshInstalled(profile.id); selectedPack=profile.id; packTab=item.kind; go('pack'); }
       if (result.missingDependencies?.length) showModal(`<h2>Мод установлен не полностью</h2><p>Не удалось загрузить обязательные зависимости.</p><div class="info-box">${esc(result.missingDependencies.join('; '))}</div><button class="button light full" data-live-open="${index}">Проверить на Modrinth ${icon('arrow')}</button>`);
       else if (result.dependencies && item.source === 'curseforge') showModal(`<h2>Проверь зависимости</h2><p>Файл установлен, но у него ${result.dependencies} обязательных зависимостей CurseForge. Их нужно добавить отдельно.</p><button class="button light full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button>`);
+      else if (profile && item.source === 'modrinth' && item.kind === 'resources' && item.id === '50dA9Sha') showModal(`<h2>Fresh Animations установлен</h2><p>Для анимаций нужны EMF и ETF. Включи сам ресурспак в настройках Minecraft.</p><button class="button light full" data-install-fresh-support="${esc(profile.id)}">Установить EMF и ETF</button>`);
     } catch (error) { toast(humanError(error)); button.disabled = false; button.innerHTML = `Скачать / установить ${icon('down')}`; }
     return;
   }

@@ -69,17 +69,20 @@ function packPage() {
   const p=state.packs.find(p=>p.id===selectedPack);
   if(!p)return library();
   const navigation=tabs([['mods','Моды'],['shaders','Шейдеры'],['resources','Ресурспаки'],['worlds','Миры'],['options','Параметры']],packTab,'data-pack-tab');
-  const installed=(state.downloads||[]).filter(item=>item.profileId===p.id&&item.kind===packTab);
+  const installed=installedRecordsForPack(p,packTab);
   const installedMarkup=installed.length?`<section class="section-heading"><div><h2>Установленные файлы</h2><p>Эти файлы лежат в папке этой сборки.</p></div></section><div class="mod-list">${installed.map((item,index)=>`<div class="mod-list-item"><span class="mod-icon" style="--mod-color:#705587">${esc((item.name||'?')[0])}</span><div><strong>${esc(item.name)}</strong><small>${esc(item.source)} · ${esc(item.filename)}</small></div><button class="icon-button push-right" data-installed-remove="${index}" aria-label="Удалить ${esc(item.name)}">${icon('close')}</button></div>`).join('')}</div>`:'';
   const existing=packView().replace('<section class="section-heading">', `<section class="minecraft-installer" data-minecraft-version="${esc(p.version)}"><div><span class="eyebrow">ОФИЦИАЛЬНЫЕ ФАЙЛЫ MOJANG</span><h2>Minecraft ${esc(p.version)}</h2><p class="minecraft-install-status">Проверяем файлы на этом устройстве…</p><div class="minecraft-install-track" hidden><span></span></div><small>После загрузки нажми «Играть»: Astra подготовит подходящую Java и ${esc(p.loader)} для этой сборки.</small></div><div class="minecraft-install-actions"><button class="button light" data-minecraft-install="${esc(p.version)}" disabled>Проверка…</button><button class="button secondary" data-minecraft-cancel hidden>Отменить</button></div></section><section class="section-heading">`);
-  if(packTab==='mods')return existing.replace('<section class="section-heading">',navigation+'<section class="section-heading">')+installedMarkup;
+  if(packTab==='mods')return existing.replace('<section class="section-heading">',navigation+'<section class="section-heading">');
   const header=existing.slice(0,existing.indexOf('<section class="section-heading">'));
-  if(packTab==='worlds')return `${header}${navigation}<div class="designed-empty"><span class="empty-symbol">${icon('world')}</span><h2>Здесь начнётся твой мир</h2><p>После первого запуска здесь появятся сохранения.<br>Миры можно будет импортировать и сохранять в резервные копии.</p><button class="button secondary" data-ui-action="world-import">${icon('folder')} Импортировать мир</button></div>`;
-  if(packTab==='options'){const chosenLoader=loaderAvailable(p.version,p.loader)?p.loader:'Forge';return `${header}${navigation}<div class="settings-panel"><form id="pack-options-form"><div class="field-heading"><h2>Параметры сборки</h2><span>Сохраняются на этом устройстве</span></div><label class="field">Название<input name="name" value="${esc(p.name)}" required maxlength="48"></label><div class="form-row"><label class="field">Версия<input value="Minecraft ${esc(p.version)}" readonly></label><label class="field">Загрузчик<select name="loader">${profileLoaders.map(name=>`<option value="${name}" ${chosenLoader===name?'selected':''} ${!loaderAvailable(p.version,name)?'disabled':''}>${name}</option>`).join('')}</select></label></div>${p.loader==='NeoForge'&&!loaderAvailable(p.version,p.loader)?'<div class="info-box">NeoForge не подходит для этой версии. Выбери Forge или Vanilla и сохрани настройки. Игровые файлы и миры останутся на месте.</div>':''}${coverPicker(p.art,'pack-options-form-cover-art')}<button class="button light">Сохранить изменения</button></form><div class="setting"><div><strong>Экспорт профиля</strong><p>Название, параметры и список выбранных модов.</p></div><button class="button secondary" data-action="export">${icon('down')} Экспорт</button></div><div class="setting"><div><strong>Удалить сборку</strong><p>Удаление только профиля в этом макете.</p></div><button class="text-button danger" data-action="delete">Удалить</button></div></div>`;}
+  if(packTab==='worlds')return `${header}${navigation}<div class="designed-empty"><span class="empty-symbol">${icon('world')}</span><h2>Миры этой сборки</h2><p>Каждая сборка хранит свои миры отдельно.<br>Открой папку, чтобы посмотреть или скопировать сохранения.</p><button class="button secondary" data-open-worlds-folder="${esc(p.id)}">${icon('folder')} Открыть папку миров</button></div>`;
+  if(packTab==='options'){const chosenLoader=loaderAvailable(p.version,p.loader)?p.loader:'Forge';return `${header}${navigation}<div class="settings-panel"><form id="pack-options-form"><div class="field-heading"><h2>Параметры сборки</h2><span>Сохраняются на этом устройстве</span></div><label class="field">Название<input name="name" value="${esc(p.name)}" required maxlength="48"></label><div class="form-row"><label class="field">Версия<input value="Minecraft ${esc(p.version)}" readonly></label><label class="field">Загрузчик<select name="loader">${profileLoaders.map(name=>`<option value="${name}" ${chosenLoader===name?'selected':''} ${!loaderAvailable(p.version,name)?'disabled':''}>${name}</option>`).join('')}</select></label></div>${!loaderAvailable(p.version,p.loader)?`<div class="info-box">${esc(p.loader)} не подходит для Minecraft ${esc(p.version)}. Выбери Forge или Vanilla и сохрани настройки. Игровые файлы и миры останутся на месте.</div>`:''}${coverPicker(p.art,'pack-options-form-cover-art')}<button class="button light">Сохранить изменения</button></form><div class="setting"><div><strong>Экспорт профиля</strong><p>Название, параметры и список выбранных модов.</p></div><button class="button secondary" data-action="export">${icon('down')} Экспорт</button></div><div class="setting"><div><strong>Удалить сборку</strong><p>Удаление только профиля в этом макете.</p></div><button class="text-button danger" data-action="delete">Удалить</button></div></div>`;}
   const items=(p[packTab]||[]).map(id=>collections[packTab].find(item=>item.id===id)).filter(Boolean);
   const label=packTab==='shaders'?'Шейдеры':'Ресурспаки';
+  const freshInstalled=packTab==='resources'&&installed.some(item=>/fresh\s*animations|freshanimations/i.test(`${item.name} ${item.filename}`));
+  const supportReady=installedRecordsForPack(p,'mods').some(item=>/entity[_ -]?model[_ -]?features|modrinth-4I1XuqiY/i.test(item.filename))&&installedRecordsForPack(p,'mods').some(item=>/entity[_ -]?texture[_ -]?features|modrinth-BVzZfTc1/i.test(item.filename));
+  const freshHelp=freshInstalled&&!supportReady?`<div class="info-box">Fresh Animations требует поддержку моделей и текстур сущностей. Для ${esc(p.loader)} установи EMF и ETF, затем включи ресурспак в настройках Minecraft. ${p.loader==='Vanilla'?'<strong>Сначала выбери загрузчик Fabric, Forge или Quilt в параметрах сборки.</strong>':`<button class="button secondary" data-install-fresh-support="${esc(p.id)}">Установить EMF и ETF</button>`}</div>`:'';
   const collectionMarkup=items.length?`<div class="mod-list">${items.map(item=>`<div class="mod-list-item"><span class="pack-mini ${item.art}">${icon(packTab==='shaders'?'sun':'cube')}</span><div><strong>${item.name}</strong><small>Выбрано в макете · ${item.by}</small></div><button class="icon-button push-right" data-remove-collection="${item.id}" data-kind="${packTab}" aria-label="Удалить ${item.name}">${icon('close')}</button></div>`).join('')}</div>`:installed.length?'':`<div class="designed-empty"><span class="empty-symbol">${icon(packTab==='shaders'?'sun':'cube')}</span><h2>Немного нового настроения</h2><p>Выбери ${label.toLowerCase()} в каталоге.<br>Здесь будет твоя личная подборка.</p><button class="button secondary" data-open-catalog="${packTab}">Открыть каталог ${icon('arrow')}</button></div>`;
-  return `${header}${navigation}<section class="section-heading"><div><h2>${label}</h2><p>${packTab==='shaders'?'Свет, тени и атмосфера твоего мира.':'Знакомые блоки с новым характером.'}</p></div><button class="button light" data-open-catalog="${packTab}">+ Добавить</button></section>${installedMarkup}${collectionMarkup}`;
+  return `${header}${navigation}<section class="section-heading"><div><h2>${label}</h2><p>${packTab==='shaders'?'Свет, тени и атмосфера твоего мира.':'Знакомые блоки с новым характером.'}</p></div><button class="button light" data-open-catalog="${packTab}">+ Добавить</button></section>${freshHelp}${installedMarkup}${collectionMarkup}`;
 }
 
 function downloadsPage() {
@@ -124,19 +127,32 @@ document.addEventListener('click',e=>{
   if(!button)return;
   const d=button.dataset;
   if(d.installedRemove!==undefined){
-    const item=(state.downloads||[]).filter(file=>file.profileId===selectedPack&&file.kind===packTab)[Number(d.installedRemove)];
+    const item=installedRecordsForPack(state.packs.find(pack=>pack.id===selectedPack),packTab)[Number(d.installedRemove)];
     if(item)showModal(`<h2>Удалить файл из сборки?</h2><p>${esc(item.name)} будет удалён с диска.</p><button class="button destructive full" data-confirm-installed-remove="${esc(item.path)}">Удалить файл</button>`);
     return;
   }
   if(d.confirmInstalledRemove){
-    const file=(state.downloads||[]).find(item=>item.path===d.confirmInstalledRemove&&item.profileId===selectedPack);
-    if(file)window.astraDesktop.removeInstalledFile(file.path,selectedPack).then(()=>{state.downloads=state.downloads.filter(item=>item!==file);save();modal.close();render();toast('Файл удалён из сборки');}).catch(error=>toast(humanError(error)));
+    const file=installedRecordsForPack(state.packs.find(pack=>pack.id===selectedPack),packTab).find(item=>item.path===d.confirmInstalledRemove);
+    if(file)window.astraDesktop.removeInstalledFile(file.path,selectedPack).then(async()=>{state.downloads=(state.downloads||[]).filter(item=>item.path!==file.path);save();await refreshInstalled(selectedPack);modal.close();render();toast('Файл удалён из сборки');}).catch(error=>toast(humanError(error)));
     return;
   }
   if(d.catalogTab){catalogType=d.catalogTab;collectionQuery='';render();}
   if(d.packTab){packTab=d.packTab;render();}
   if(d.settingsTab){settingsTab=d.settingsTab;render();}
   if(d.openCatalog){catalogTargetPackId=selectedPack;catalogType=d.openCatalog;collectionQuery='';go('mods');}
+  if(d.installFreshSupport){
+    const p=state.packs.find(pack=>pack.id===d.installFreshSupport);
+    if(!p||p.loader==='Vanilla'||!loaderAvailable(p.version,p.loader))return;
+    button.disabled=true;button.textContent='Устанавливаем…';
+    window.astraDesktop.downloadProject({source:'modrinth',kind:'mods',id:'4I1XuqiY',gameVersion:p.version,loader:p.loader.toLowerCase(),profileId:p.id}).then(async result=>{
+      rememberDownloads([{...result,name:'Entity Model Features',source:'modrinth'},...(result.installedDependencies||[])]);
+      await refreshInstalled(p.id);if(modal.open)modal.close();render();
+      if(result.missingDependencies?.length)toast('EMF установлен, но не все зависимости удалось скачать.');
+      else toast('EMF и ETF установлены. Включи Fresh Animations в настройках Minecraft.');
+    }).catch(error=>{button.disabled=false;button.textContent='Установить EMF и ETF';toast(humanError(error))});
+    return;
+  }
+  if(d.openWorldsFolder){window.astraDesktop.openWorldsFolder(d.openWorldsFolder).catch(error=>toast(humanError(error)));return;}
   if(d.collection)collectionModal(d.kind,d.collection);
   if(d.addCollection){
     const item=collections[d.kind]?.find(item=>item.id===d.addCollection);
@@ -157,7 +173,6 @@ document.addEventListener('click',e=>{
   if(d.uiAction==='demo-download'){downloadExample={paused:false};render();}
   if(d.uiAction==='pause-download'){downloadExample.paused=!downloadExample.paused;render();}
   if(d.uiAction==='cancel-download'){downloadExample=null;render();}
-  if(d.uiAction==='world-import')showModal(`<span class="modal-mark">${icon('world')}</span><h2>Твои миры всегда рядом</h2><p>Здесь можно будет выбрать папку с сохранением Minecraft и перенести её в сборку.</p><div class="info-box">Сейчас это макет. Импорт игровых миров подключим вместе с работой с файлами Minecraft.</div><button class="button light full" data-action="close">Понятно</button>`);
   if(d.uiAction==='microsoft')showModal(`<span class="microsoft-symbol"><i></i><i></i><i></i><i></i></span><h2>Войти через Microsoft</h2><p>Авторизация будет открываться в браузере. Пароль не нужно вводить в лаунчере.</p><div class="auth-steps"><div><span>1</span>Вход в аккаунт Microsoft</div><div><span>2</span>Проверка профиля Minecraft</div><div><span>3</span>Готово — можно играть</div></div><div class="info-box">Экран для оценки дизайна. Авторизация пока не подключена, данные аккаунта не запрашиваются.</div><button class="button light full" data-action="close">Вернуться к аккаунтам</button>`);
   if(d.uiAction==='java')showModal(`<span class="modal-mark">${icon('settings')}</span><h2>Подходящая Java</h2><p>Для каждой версии игры Astra будет подбирать подходящую среду автоматически.</p><div class="choose-packs"><div class="choose-pack"><span>Minecraft 1.21.1<small>Java 21</small></span>${icon('check')}</div><div class="choose-pack"><span>Minecraft 1.20.1<small>Java 17</small></span>${icon('check')}</div></div><div class="info-box">Это макет настройки. Установка Java пока не выполняется.</div><button class="button light full" data-action="close">Оставить автоматический выбор</button>`);
   if(d.uiAction==='changelog')showModal('<h2>Astra Desktop 0.3</h2><p>Теперь можно пройти весь интерфейс.</p><ul class="changelog"><li>Отдельное приложение Windows</li><li>Каталог сборок, шейдеров и ресурспаков</li><li>Вкладки управления сборкой</li><li>Очередь загрузок и аккаунты</li><li>Темы, акценты и настройки интерфейса</li></ul><button class="button light full" data-action="close">Отлично</button>');

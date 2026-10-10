@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const { app, shell } = require('electron');
 const { getCurseForgeKey } = require('./preferences.cjs');
 const { instanceFolder } = require('./game-loader.cjs');
+const { hashFile } = require('./game-files.cjs');
 
 function assertProject(request) {
   if (!['modrinth','curseforge'].includes(request?.source) || !['mods','modpacks','shaders','resources'].includes(request?.kind)) throw new Error('Неизвестный проект.');
@@ -100,11 +101,15 @@ async function saveResolved(request, resolved) {
     : path.join(app.getPath('downloads'), 'AstraLauncher', request.kind);
   await fs.mkdir(dir, { recursive: true });
   const stem = `${request.source}-${request.id}-${filename}`;
+  const digest = crypto.createHash('sha256').update(bytes).digest('hex');
   let output;
   for (let index = 0; index < 1000; index++) {
     const candidate = path.join(dir, index ? `${index}-${stem}` : stem);
     try { await fs.writeFile(candidate, bytes, { flag: 'wx' }); output = candidate; break; }
-    catch (error) { if (error.code !== 'EEXIST') throw error; }
+    catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      if ((await hashFile(candidate, 'sha256')).toLowerCase() === digest) { output = candidate; break; }
+    }
   }
   if (!output) throw new Error('Не удалось выбрать имя для скачанного файла.');
   return { path: output, filename, version: resolved.version, dependencies: resolved.required?.length || resolved.dependencies || 0, profileId: request.profileId || null, kind: request.kind };
@@ -133,4 +138,27 @@ async function removeInstalled(value, profileId) {
   return true;
 }
 
-module.exports = { download, showFile, openFolder, removeInstalled, resolveModrinth };
+async function listInstalled(profileId) {
+  const root = instanceFolder(app.getPath('userData'), profileId);
+  const results = [];
+  for (const [kind, folder] of Object.entries({ mods: 'mods', shaders: 'shaderpacks', resources: 'resourcepacks' })) {
+    let entries;
+    try { entries = await fs.readdir(path.join(root, folder), { withFileTypes: true }); }
+    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    for (const entry of entries.slice(0, 1000)) {
+      if (!entry.isFile() || !/\.(jar|zip)$/i.test(entry.name)) continue;
+      results.push({ path: path.join(root, folder, entry.name), filename: entry.name, kind, profileId });
+    }
+  }
+  return results;
+}
+
+async function openWorldsFolder(profileId) {
+  const folder = path.join(instanceFolder(app.getPath('userData'), profileId), 'saves');
+  await fs.mkdir(folder, { recursive: true });
+  const error = await shell.openPath(folder);
+  if (error) throw new Error(error);
+  return true;
+}
+
+module.exports = { download, showFile, openFolder, removeInstalled, listInstalled, openWorldsFolder, resolveModrinth };

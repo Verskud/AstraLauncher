@@ -118,7 +118,7 @@ async function launch(profile, context) {
   if (!['Forge','NeoForge'].includes(profile.loader) || loader?.minecraftArguments) classpath.push(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.jar`));
   const account = profile.accountMode === 'microsoft' ? await microsoft.minecraftAccount() : offlineAccount(profile.playerName || 'Player');
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.1',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.2',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,
@@ -140,7 +140,9 @@ async function launch(profile, context) {
   const memory = Number(profile.memory);
   const params = [`-Xmx${Number.isInteger(memory) && memory >= 2 && memory <= 32 ? memory : 4}G`, ...jvm, mainClass, ...game];
   onProgress({ phase: 'starting', message: `Запускаем ${profile.name || 'Minecraft'}…` });
-  const child = spawn(java, params, { cwd: directory, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const javaw = path.join(path.dirname(java), 'javaw.exe');
+  const executable = await fs.access(javaw).then(() => javaw, () => java);
+  const child = spawn(executable, params, { cwd: directory, windowsHide: false, stdio: ['ignore', 'pipe', 'pipe'] });
   running = { child, id: profile.id, log: '' };
   for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { if (running?.child === child) running.log = (running.log + chunk.toString()).slice(-8000); });
   const launchLog = path.join(directory, 'astra-launch.log');

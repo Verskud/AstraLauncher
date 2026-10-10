@@ -109,6 +109,8 @@ if (!app.requestSingleInstanceLock()) {
     guarded('catalog:show-file', value => download.showFile(value));
     guarded('catalog:open-downloads', () => download.openFolder());
     guarded('catalog:remove-installed', (file, profileId) => download.removeInstalled(file, profileId));
+    guarded('catalog:list-installed', profileId => download.listInstalled(profileId));
+    guarded('game:open-worlds-folder', profileId => download.openWorldsFolder(profileId));
     guarded('versions:list', refresh => refresh === true ? versions.refresh() : versions.list());
     const installer = createInstaller({ root: path.join(app.getPath('userData'), 'minecraft'), onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('minecraft:progress', progress);
