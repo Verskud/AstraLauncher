@@ -1,6 +1,7 @@
 // Version IDs come from Mojang's Java Edition manifest through the desktop process.
 let minecraftManifest = null;
 let versionRequest = null;
+const profileLoaders = ['Vanilla', 'Fabric', 'Forge', 'NeoForge', 'Quilt'];
 const versionLabels = {
   ru: ['Релизы', 'Снапшоты', 'Старая бета', 'Старая альфа', 'Все версии', 'Найти версию…', 'Загружаем версии…', 'Версии не найдены', 'Список сохранён на устройстве', 'Каталог обновлён', 'Не удалось обновить каталог', 'Для исторических версий и снапшотов пока доступен только профиль Vanilla.', 'Загрузчик отмечается в профиле. Установка и совместимость будут проверяться при подключении игрового запуска.'],
   en: ['Releases', 'Snapshots', 'Old beta', 'Old alpha', 'All versions', 'Find a version…', 'Loading versions…', 'No versions found', 'Saved version list', 'Catalog updated', 'Could not refresh catalog', 'Only Vanilla profiles are available for snapshots and historical versions.', 'The loader is recorded in this profile. Installation and compatibility checks will follow with game launching.'],
