@@ -29,10 +29,10 @@ function trustedSender(event) {
 function createWindow() {
   mainWindow = new BrowserWindow({
     title: 'AstraLauncher',
-    width: 1340,
-    height: 940,
-    minWidth: 1040,
-    minHeight: 740,
+    width: 1180,
+    height: 760,
+    minWidth: 900,
+    minHeight: 560,
     backgroundColor: '#111113',
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: TITLE_COLORS.dark, symbolColor: '#f0f0f2', height: 40 },
