@@ -6,6 +6,7 @@ const preferences = require('./preferences.cjs');
 const microsoft = require('./microsoft.cjs');
 const download = require('./download.cjs');
 const versions = require('./versions.cjs');
+const { createInstaller } = require('./minecraft-install.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
@@ -107,6 +108,12 @@ if (!app.requestSingleInstanceLock()) {
     guarded('catalog:show-file', value => download.showFile(value));
     guarded('catalog:open-downloads', () => download.openFolder());
     guarded('versions:list', refresh => refresh === true ? versions.refresh() : versions.list());
+    const installer = createInstaller({ root: path.join(app.getPath('userData'), 'minecraft'), onProgress: progress => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('minecraft:progress', progress);
+    } });
+    guarded('minecraft:install', version => installer.install(version));
+    guarded('minecraft:status', version => installer.status(version));
+    guarded('minecraft:cancel', () => installer.cancel());
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());

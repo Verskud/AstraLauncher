@@ -19,7 +19,7 @@ document.addEventListener('click',e=>{
  if(b.dataset.add||b.dataset.mod){addModal(b.dataset.add||b.dataset.mod);return}
  if(b.dataset.install){const p=state.packs.find(p=>p.id===b.dataset.target),m=mods.find(m=>m.id===b.dataset.install);if(p&&m&&p.loader===m.loader&&p.version===m.version&&!p.mods.includes(m.id)){p.mods.push(m.id);save();modal.close();render();toast(`${m.name} добавлен в «${p.name}»`)}return}
  if(b.dataset.remove){const p=state.packs.find(p=>p.id===selectedPack);p.mods=p.mods.filter(id=>id!==b.dataset.remove);save();render();toast('Мод удалён из профиля сборки');return}
- if(b.dataset.launch){const p=state.packs.find(p=>p.id===b.dataset.launch);showModal(`<span class="modal-mark">${icon('play')}</span><h2>Почти готовы к игре</h2><p>«${esc(p.name)}» настроена: ${esc(p.loader)} ${esc(p.version)}, ${modCount(p.mods.length)}.</p><div class="info-box">Это первый прототип интерфейса. Скачивание Minecraft, Java, модов и настоящий запуск ещё не подключены.</div><button class="button light full" data-action="close">Вернуться в сборку</button>`);return}
+ if(b.dataset.launch){const p=state.packs.find(p=>p.id===b.dataset.launch);selectedPack=p.id;packTab='mods';go('pack');return}
  const action=b.dataset.action;
  if(action==='close')modal.close();
  if(action==='create')createModal();

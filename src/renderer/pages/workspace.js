@@ -68,7 +68,7 @@ function packPage() {
   const p=state.packs.find(p=>p.id===selectedPack);
   if(!p)return library();
   const navigation=tabs([['mods','Моды'],['shaders','Шейдеры'],['resources','Ресурспаки'],['worlds','Миры'],['options','Параметры']],packTab,'data-pack-tab');
-  const existing=packView();
+  const existing=packView().replace('<section class="section-heading">', `<section class="minecraft-installer" data-minecraft-version="${esc(p.version)}"><div><span class="eyebrow">ОФИЦИАЛЬНЫЕ ФАЙЛЫ MOJANG</span><h2>Minecraft ${esc(p.version)}</h2><p class="minecraft-install-status">Проверяем файлы на этом устройстве…</p><div class="minecraft-install-track" hidden><span></span></div><small>Скачиваются клиент, библиотеки Windows и ресурсы. Java, загрузчик модов и запуск игры будут добавлены позже.</small></div><div class="minecraft-install-actions"><button class="button light" data-minecraft-install="${esc(p.version)}" disabled>Проверка…</button><button class="button secondary" data-minecraft-cancel hidden>Отменить</button></div></section><section class="section-heading">`);
   if(packTab==='mods')return existing.replace('<section class="section-heading">',navigation+'<section class="section-heading">');
   const header=existing.slice(0,existing.indexOf('<section class="section-heading">'));
   if(packTab==='worlds')return `${header}${navigation}<div class="designed-empty"><span class="empty-symbol">${icon('world')}</span><h2>Здесь начнётся твой мир</h2><p>После первого запуска здесь появятся сохранения.<br>Миры можно будет импортировать и сохранять в резервные копии.</p><button class="button secondary" data-ui-action="world-import">${icon('folder')} Импортировать мир</button></div>`;
