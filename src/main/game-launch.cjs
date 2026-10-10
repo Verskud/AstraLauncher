@@ -9,6 +9,7 @@ const { validateProfile, instanceFolder, getLoaderProfile, mavenPath } = require
 const { getJava } = require('./game-java.cjs');
 const microsoft = require('./microsoft.cjs');
 const { relativePath } = require('./game-files.cjs');
+const { checkModFolder } = require('./mod-compat.cjs');
 
 let running = null;
 function offlineAccount(name) {
@@ -102,6 +103,7 @@ async function launch(profile, context) {
   const { userData, minecraftRoot, onProgress } = context;
   const marker = relativePath(minecraftRoot, `versions/${profile.version}/installed.json`);
   try { await fs.access(marker); } catch { throw new Error(`Сначала скачай Minecraft ${profile.version} в сборке.`); }
+  if (profile.loader === 'Fabric' || profile.loader === 'Quilt') await checkModFolder(path.join(instanceFolder(userData, profile.id), 'mods'));
   const metadata = JSON.parse(await fs.readFile(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.json`), 'utf8'));
   const java = await getJava(minecraftRoot, metadata, onProgress);
   const loader = await getLoaderProfile(profile, minecraftRoot, java, onProgress);
@@ -118,7 +120,7 @@ async function launch(profile, context) {
   if (!['Forge','NeoForge'].includes(profile.loader) || loader?.minecraftArguments) classpath.push(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.jar`));
   const account = profile.accountMode === 'microsoft' ? await microsoft.minecraftAccount() : offlineAccount(profile.playerName || 'Player');
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.2',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.3',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,

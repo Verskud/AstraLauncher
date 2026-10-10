@@ -15,7 +15,14 @@ function installedRecordsForPack(pack, kind) {
   }).sort((a,b) => a.filename.localeCompare(b.filename));
 }
 async function refreshInstalled(profileId) {
-  try { installedByPack.set(profileId, await window.astraDesktop.listInstalledFiles(profileId)); }
+  try {
+    const files = await window.astraDesktop.listInstalledFiles(profileId);
+    installedByPack.set(profileId, files);
+    const present = new Set(files.map(file => file.path.toLowerCase()));
+    const previous = state.downloads || [];
+    const remaining = previous.filter(item => item && (item.profileId !== profileId || !['mods','shaders','resources'].includes(item.kind) || typeof item.path === 'string' && present.has(item.path.toLowerCase())));
+    if (remaining.length !== previous.length) { state.downloads = remaining; save(); }
+  }
   catch (error) { console.warn('Could not list installed files:', error); }
 }
 async function refreshInstalledAll() {

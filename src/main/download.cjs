@@ -5,6 +5,7 @@ const { app, shell } = require('electron');
 const { getCurseForgeKey } = require('./preferences.cjs');
 const { instanceFolder } = require('./game-loader.cjs');
 const { hashFile } = require('./game-files.cjs');
+const { fabricMetadata, matchesVersion, checkFabricCompatibility } = require('./mod-compat.cjs');
 
 function assertProject(request) {
   if (!['modrinth','curseforge'].includes(request?.source) || !['mods','modpacks','shaders','resources'].includes(request?.kind)) throw new Error('Неизвестный проект.');
@@ -15,7 +16,7 @@ function assertProject(request) {
 }
 
 async function api(url, key) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.8.2' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.3' };
   if (key) headers['x-api-key'] = key;
   const response = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
@@ -35,6 +36,104 @@ async function resolveModrinth(request) {
   const downloadUrl = new URL(file.url);
   if (downloadUrl.protocol !== 'https:' || downloadUrl.hostname !== 'cdn.modrinth.com') throw new Error('Неожиданный адрес файла Modrinth.');
   return { url: downloadUrl.href, filename: file.filename, sha512: file.hashes?.sha512, version: version.version_number, required: (version.dependencies || []).filter(d => d.dependency_type === 'required') };
+}
+
+async function fetchResolved(resolved) {
+  const response = await fetch(resolved.url, { signal: AbortSignal.timeout(120000) });
+  if (!response.ok) throw new Error(`Не удалось скачать файл: ${response.status}.`);
+  if (Number(response.headers.get('content-length') || 0) > 150_000_000) throw new Error('Файл слишком большой для этой версии Astra.');
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length > 150_000_000) throw new Error('Файл слишком большой для этой версии Astra.');
+  if (resolved.sha512 && crypto.createHash('sha512').update(bytes).digest('hex') !== resolved.sha512) throw new Error('Контрольная сумма файла не совпала.');
+  if (resolved.sha1 && crypto.createHash('sha1').update(bytes).digest('hex') !== resolved.sha1) throw new Error('Контрольная сумма файла не совпала.');
+  return bytes;
+}
+
+function modrinthFile(version) {
+  const file = version.files?.find(item => item.primary) || version.files?.[0];
+  if (!file) throw new Error('У выбранной версии нет файла.');
+  const url = new URL(file.url);
+  if (url.protocol !== 'https:' || url.hostname !== 'cdn.modrinth.com') throw new Error('Неожиданный адрес файла Modrinth.');
+  return { url: url.href, filename: file.filename, sha512: file.hashes?.sha512, version: version.version_number, required: (version.dependencies || []).filter(item => item.dependency_type === 'required') };
+}
+
+async function existingModMetadata(profileId) {
+  const folder = path.join(instanceFolder(app.getPath('userData'), profileId), 'mods');
+  let names;
+  try { names = await fs.readdir(folder); }
+  catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  const entries = [];
+  for (const name of names.filter(value => value.toLowerCase().endsWith('.jar')).slice(0, 500)) {
+    const file = path.join(folder, name);
+    let metadata = null;
+    try { metadata = fabricMetadata(await fs.readFile(file)); } catch { /* Another loader's JAR may have no Fabric metadata. */ }
+    entries.push({ path: file, name, metadata });
+  }
+  return entries;
+}
+
+function isProjectFile(name, projectId) {
+  return new RegExp(`^(?:\\d+-)?modrinth-${projectId}-`, 'i').test(name);
+}
+
+async function downloadModrinthMod(request) {
+  const fabric = request.loader === 'fabric' || request.loader === 'quilt';
+  const existing = fabric ? await existingModMetadata(request.profileId) : [];
+  const planned = new Map();
+  async function choose(projectId, exactVersionId, parent) {
+    const next = { ...request, id: projectId };
+    let versions;
+    if (exactVersionId) {
+      const version = await api(`https://api.modrinth.com/v2/version/${encodeURIComponent(exactVersionId)}`);
+      versions = version.project_id === projectId ? [version] : [];
+    } else {
+      const url = new URL(`https://api.modrinth.com/v2/project/${projectId}/version`);
+      url.searchParams.set('game_versions', JSON.stringify([request.gameVersion]));
+      url.searchParams.set('loaders', JSON.stringify([request.loader]));
+      versions = await api(url);
+      versions.sort((a, b) => Number(b.version_type === 'release') - Number(a.version_type === 'release'));
+    }
+    for (const version of versions.slice(0, 50)) {
+      if (!version.files?.length || !version.game_versions?.includes(request.gameVersion) || !version.loaders?.includes(request.loader)) continue;
+      const resolved = modrinthFile(version);
+      const bytes = await fetchResolved(resolved);
+      const metadata = fabric ? fabricMetadata(bytes) : null;
+      if (fabric && !metadata) continue;
+      const id = metadata?.id;
+      if (parent && id && !matchesVersion(metadata.version, parent.depends?.[id])) continue;
+      if (id && existing.some(entry => entry.metadata?.depends?.[id] && !matchesVersion(metadata.version, entry.metadata.depends[id]) && !isProjectFile(entry.name, projectId))) continue;
+      return { request: next, resolved, bytes, metadata, projectId };
+    }
+    throw new Error(`Для ${projectId} нет версии, совместимой с этой сборкой и установленными модами.`);
+  }
+  async function collect(projectId, exactVersionId, parent, depth) {
+    if (depth > 12 || planned.size > 40) throw new Error('Слишком много вложенных зависимостей.');
+    if (planned.has(projectId)) return;
+    const choice = await choose(projectId, exactVersionId, parent);
+    planned.set(projectId, choice);
+    for (const dependency of choice.resolved.required) {
+      let id = dependency.project_id;
+      if (!id && dependency.version_id) id = (await api(`https://api.modrinth.com/v2/version/${encodeURIComponent(dependency.version_id)}`)).project_id;
+      if (!id) throw new Error(`У зависимости ${dependency.version_id || 'без ID'} нет проекта Modrinth.`);
+      await collect(id, dependency.version_id, choice.metadata, depth + 1);
+    }
+  }
+  await collect(request.id, null, null, 0);
+  const replaced = [...planned.keys()];
+  const kept = existing.filter(entry => !replaced.some(id => isProjectFile(entry.name, id)));
+  if (fabric) checkFabricCompatibility([...kept, ...[...planned.values()].map(item => ({ metadata: item.metadata }))]);
+  const installed = [];
+  try {
+    for (const item of planned.values()) installed.push({ ...await saveResolved(item.request, item.resolved, item.bytes), name: item.projectId, source: 'modrinth' });
+  } catch (error) {
+    await Promise.all(installed.filter(item => item.created).map(item => fs.rm(item.path, { force: true })));
+    throw error;
+  }
+  for (const entry of existing) {
+    if (replaced.some(id => isProjectFile(entry.name, id)) && !installed.some(item => item.path === entry.path)) await fs.rm(entry.path, { force: true });
+  }
+  const [root, ...dependencies] = installed;
+  return { ...root, installedDependencies: dependencies, missingDependencies: [], created: undefined };
 }
 
 async function resolveCurseForge(request) {
@@ -58,61 +157,32 @@ async function download(request) {
   assertProject(request);
   if (request.profileId && request.kind === 'modpacks') throw new Error('Сборки .mrpack нельзя положить в папку модов. Импорт сборок появится отдельно.');
   if (request.profileId && (!request.gameVersion || request.kind === 'mods' && !request.loader)) throw new Error('Для установки мода выбери сборку с загрузчиком.');
+  if (request.profileId && request.source === 'modrinth' && request.kind === 'mods') return downloadModrinthMod(request);
   const resolved = request.source === 'modrinth' ? await resolveModrinth(request) : await resolveCurseForge(request);
-  const result = await saveResolved(request, resolved);
-  if (request.profileId && request.source === 'modrinth' && request.kind === 'mods') {
-    const seen = new Set([request.id]);
-    const missing = [];
-    const installed = [];
-    async function installRequired(dependencies, depth) {
-      if (depth > 12 || seen.size > 40) throw new Error('Слишком много вложенных зависимостей. Проверь страницу проекта.');
-      for (const dependency of dependencies) {
-        const id = dependency.project_id;
-        if (!id) { missing.push(`версия ${dependency.version_id || 'неизвестна'}: у зависимости нет ID проекта`); continue; }
-        if (seen.has(id)) continue;
-        seen.add(id);
-        try {
-          const childRequest = { ...request, id };
-          const child = await resolveModrinth(childRequest);
-          installed.push({ ...await saveResolved(childRequest, child), name: id, source: 'modrinth' });
-          await installRequired(child.required || [], depth + 1);
-        } catch (error) { missing.push(`${id}: ${error.message}`); }
-      }
-    }
-    await installRequired(resolved.required || [], 0);
-    result.missingDependencies = missing;
-    result.installedDependencies = installed;
-  }
-  return result;
+  return saveResolved(request, resolved);
 }
 
-async function saveResolved(request, resolved) {
+async function saveResolved(request, resolved, preparedBytes) {
   const filename = path.basename(String(resolved.filename || 'project.zip')).replace(/[^a-zA-Z0-9._+()-]/g, '_').slice(0, 180);
   if (!filename || filename === '.' || filename === '..') throw new Error('Некорректное имя файла.');
-  const response = await fetch(resolved.url, { signal: AbortSignal.timeout(120000) });
-  if (!response.ok) throw new Error(`Не удалось скачать файл: ${response.status}.`);
-  if (Number(response.headers.get('content-length') || 0) > 150_000_000) throw new Error('Файл слишком большой для этой версии Astra.');
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length > 150_000_000) throw new Error('Файл слишком большой для этой версии Astra.');
-  if (resolved.sha512 && crypto.createHash('sha512').update(bytes).digest('hex') !== resolved.sha512) throw new Error('Контрольная сумма файла не совпала.');
-  if (resolved.sha1 && crypto.createHash('sha1').update(bytes).digest('hex') !== resolved.sha1) throw new Error('Контрольная сумма файла не совпала.');
+  const bytes = preparedBytes || await fetchResolved(resolved);
   const dir = request.profileId
     ? path.join(instanceFolder(app.getPath('userData'), request.profileId), { mods: 'mods', shaders: 'shaderpacks', resources: 'resourcepacks' }[request.kind])
     : path.join(app.getPath('downloads'), 'AstraLauncher', request.kind);
   await fs.mkdir(dir, { recursive: true });
   const stem = `${request.source}-${request.id}-${filename}`;
   const digest = crypto.createHash('sha256').update(bytes).digest('hex');
-  let output;
+  let output, created = false;
   for (let index = 0; index < 1000; index++) {
     const candidate = path.join(dir, index ? `${index}-${stem}` : stem);
-    try { await fs.writeFile(candidate, bytes, { flag: 'wx' }); output = candidate; break; }
+    try { await fs.writeFile(candidate, bytes, { flag: 'wx' }); output = candidate; created = true; break; }
     catch (error) {
       if (error.code !== 'EEXIST') throw error;
       if ((await hashFile(candidate, 'sha256')).toLowerCase() === digest) { output = candidate; break; }
     }
   }
   if (!output) throw new Error('Не удалось выбрать имя для скачанного файла.');
-  return { path: output, filename, version: resolved.version, dependencies: resolved.required?.length || resolved.dependencies || 0, profileId: request.profileId || null, kind: request.kind };
+  return { path: output, filename, version: resolved.version, dependencies: resolved.required?.length || resolved.dependencies || 0, profileId: request.profileId || null, kind: request.kind, created };
 }
 
 async function showFile(value) {
