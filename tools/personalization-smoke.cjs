@@ -71,5 +71,11 @@ run().then(() => app.quit()).catch(error => {
 });
 app.on('quit', () => {
   const target = path.resolve(tempRoot);
-  if (target.startsWith(path.resolve(os.tmpdir()) + path.sep)) fs.rmSync(target, { recursive: true, force: true });
+  if (!target.startsWith(path.resolve(os.tmpdir()) + path.sep)) return;
+  try {
+    // Windows may still hold Chromium profile files while Electron is quitting.
+    fs.rmSync(target, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  } catch {
+    // A locked temporary profile is harmless; cleanup must never open an error dialog.
+  }
 });
