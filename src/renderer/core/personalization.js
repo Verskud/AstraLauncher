@@ -145,7 +145,7 @@ settingsPage = function () {
   } else if (settingsTab === 'game') {
     content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),t('memoryHint'),`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',t('gameNote'),`<span class="setting-value">Java 17 / 21</span>`)}${settingRow(t('backups'),t('backupsHint'),`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups?'checked':''}><span></span></label>`)}<div class="quiet-note">${icon('info')} ${t('gameNote')}</div>`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.8.0</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.8.1</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };

@@ -109,7 +109,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('catalog:open-downloads', () => download.openFolder());
     guarded('versions:list', refresh => refresh === true ? versions.refresh() : versions.list());
     const installer = createInstaller({ root: path.join(app.getPath('userData'), 'minecraft'), onProgress: progress => {
-      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('minecraft:progress', progress);
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('minecraft:progress', progress);
     } });
     guarded('minecraft:install', version => installer.install(version));
     guarded('minecraft:status', version => installer.status(version));
