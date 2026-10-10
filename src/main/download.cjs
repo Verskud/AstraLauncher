@@ -16,7 +16,7 @@ function assertProject(request) {
 }
 
 async function api(url, key) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.4' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.5' };
   if (key) headers['x-api-key'] = key;
   const response = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);

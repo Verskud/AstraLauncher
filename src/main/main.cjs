@@ -8,6 +8,7 @@ const download = require('./download.cjs');
 const versions = require('./versions.cjs');
 const { createInstaller } = require('./minecraft-install.cjs');
 const game = require('./game-launch.cjs');
+const { createWorldBackups } = require('./world-backups.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
@@ -111,6 +112,19 @@ if (!app.requestSingleInstanceLock()) {
     guarded('catalog:remove-installed', (file, profileId) => download.removeInstalled(file, profileId));
     guarded('catalog:list-installed', profileId => download.listInstalled(profileId));
     guarded('game:open-worlds-folder', profileId => download.openWorldsFolder(profileId));
+    let launchPending = null;
+    const worldBackups = createWorldBackups(app.getPath('userData'), profileId => launchPending === profileId || game.status().running && game.status().profileId === profileId);
+    guarded('world-backups:list', profileId => worldBackups.list(profileId));
+    guarded('world-backups:create', profileId => worldBackups.create(profileId));
+    guarded('world-backups:restore', (profileId, backupId) => worldBackups.restore(profileId, backupId));
+    guarded('world-backups:remove', (profileId, backupId) => worldBackups.remove(profileId, backupId));
+    guarded('world-backups:open-folder', async profileId => {
+      const folder = worldBackups.folder(profileId);
+      await require('node:fs/promises').mkdir(folder, { recursive: true });
+      const error = await shell.openPath(folder);
+      if (error) throw new Error(error);
+      return true;
+    });
     guarded('versions:list', refresh => refresh === true ? versions.refresh() : versions.list());
     const installer = createInstaller({ root: path.join(app.getPath('userData'), 'minecraft'), onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('minecraft:progress', progress);
@@ -118,12 +132,22 @@ if (!app.requestSingleInstanceLock()) {
     guarded('minecraft:install', version => installer.install(version));
     guarded('minecraft:status', version => installer.status(version));
     guarded('minecraft:cancel', () => installer.cancel());
-    guarded('game:launch', profile => game.launch(profile, {
-      userData: app.getPath('userData'), minecraftRoot: path.join(app.getPath('userData'), 'minecraft'),
-      onProgress: progress => {
-        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', progress);
-      },
-    }));
+    guarded('game:launch', async profile => {
+      if (launchPending || game.status().running) throw new Error('Игра уже запускается или запущена.');
+      if (profile?.autoBackup === true) {
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', { phase: 'backup', message: 'Создаём резервную копию миров…' });
+        await worldBackups.create(profile.id, 'auto', profile.backupLimit);
+      }
+      launchPending = profile.id;
+      try {
+        return await game.launch(profile, {
+          userData: app.getPath('userData'), minecraftRoot: path.join(app.getPath('userData'), 'minecraft'),
+          onProgress: progress => {
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', progress);
+          },
+        });
+      } finally { launchPending = null; }
+    });
     guarded('game:status', () => game.status());
     createWindow();
   });

@@ -85,6 +85,6 @@ refreshInstalledAll();
 window.addEventListener('focus', refreshInstalledAll);
 
 window.astraDesktop.onGameProgress(progress => {
-  if (progress.phase === 'java' || progress.phase === 'loader' || progress.phase === 'starting') toast(progress.message);
+  if (progress.phase === 'backup' || progress.phase === 'java' || progress.phase === 'loader' || progress.phase === 'starting') toast(progress.message);
   else if (progress.phase === 'error' || progress.phase === 'closed') toast(progress.message);
 });

@@ -162,6 +162,34 @@ const runtimeCopy = {
   'de-CH': ['Wird beim Start der ausgewählten Instanz verwendet.', 'Astra lädt die passende Java-Version automatisch herunter.', 'Automatisch', 'Welt-Backups sind noch nicht verfügbar.', 'Demnächst'],
   nb: ['Brukes når den valgte instansen startes.', 'Astra laster automatisk ned riktig Java-versjon.', 'Automatisk', 'Sikkerhetskopiering av verdener er ikke tilgjengelig ennå.', 'Kommer snart'],
 };
+const backupSettingsCopy = {
+  ru: ['Сохранять миры перед каждым запуском игры.', 'Хранить автоматических копий', 'Старые автокопии удаляются; ручные копии сохраняются.'],
+  en: ['Back up worlds before each game launch.', 'Automatic backups to keep', 'Older automatic backups are removed; manual backups stay.'],
+  de: ['Welten vor jedem Spielstart sichern.', 'Automatische Sicherungen behalten', 'Ältere automatische Sicherungen werden entfernt; manuelle bleiben erhalten.'],
+  fr: ['Sauvegarder les mondes avant chaque lancement du jeu.', 'Sauvegardes automatiques à conserver', 'Les anciennes sauvegardes automatiques sont supprimées ; les manuelles restent.'],
+  es: ['Guardar los mundos antes de iniciar el juego.', 'Copias automáticas que conservar', 'Se eliminan las copias automáticas antiguas; las manuales permanecen.'],
+  ko: ['게임을 실행할 때마다 월드를 백업합니다.', '보관할 자동 백업 수', '오래된 자동 백업만 삭제하며 수동 백업은 유지합니다.'],
+  ja: ['ゲームを起動する前に毎回ワールドをバックアップします。', '保持する自動バックアップ数', '古い自動バックアップのみ削除し、手動バックアップは残します。'],
+  'zh-CN': ['每次启动游戏前备份世界。', '保留的自动备份数量', '旧的自动备份会被清理；手动备份会保留。'],
+  'zh-TW': ['每次啟動遊戲前備份世界。', '保留的自動備份數量', '舊的自動備份會被清理；手動備份會保留。'],
+  ar: ['أنشئ نسخة احتياطية للعوالم قبل كل تشغيل للعبة.', 'عدد النسخ التلقائية المحتفَظ بها', 'تُحذف النسخ التلقائية القديمة، وتبقى النسخ اليدوية.'],
+  'de-CH': ['Welten vor jedem Spielstart sichern.', 'Automatische Sicherungen behalten', 'Ältere automatische Sicherungen werden entfernt; manuelle bleiben erhalten.'],
+  nb: ['Sikkerhetskopier verdener før hver spillstart.', 'Automatiske kopier som beholdes', 'Eldre automatiske kopier slettes; manuelle kopier beholdes.'],
+};
+const connectionNoteCopy = {
+  ru: 'Ключи и токены сохраняются в защищённом хранилище Windows. Для официальных серверов нужен Microsoft-аккаунт с Minecraft Java Edition.',
+  en: 'Keys and tokens are stored in Windows protected storage. Official servers require a Microsoft account that owns Minecraft Java Edition.',
+  de: 'Schlüssel und Tokens werden geschützt unter Windows gespeichert. Für offizielle Server brauchst du ein Microsoft-Konto mit Minecraft Java Edition.',
+  fr: 'Les clés et jetons sont stockés dans l’espace protégé de Windows. Les serveurs officiels exigent un compte Microsoft possédant Minecraft Java Edition.',
+  es: 'Las claves y los tokens se guardan en el almacenamiento protegido de Windows. Los servidores oficiales requieren una cuenta Microsoft con Minecraft Java Edition.',
+  ko: '키와 토큰은 Windows의 보호된 저장소에 보관됩니다. 공식 서버에는 Minecraft Java Edition을 소유한 Microsoft 계정이 필요합니다.',
+  ja: 'キーとトークンは Windows の保護されたストレージに保存されます。公式サーバーには Minecraft Java Edition を所有する Microsoft アカウントが必要です。',
+  'zh-CN': '密钥和令牌保存在 Windows 受保护存储中。官方服务器需要拥有 Minecraft Java Edition 的 Microsoft 帐户。',
+  'zh-TW': '金鑰與權杖儲存在 Windows 受保護的儲存空間。官方伺服器需要擁有 Minecraft Java Edition 的 Microsoft 帳戶。',
+  ar: 'تُحفظ المفاتيح والرموز في مساحة تخزين Windows المحمية. تتطلب الخوادم الرسمية حساب Microsoft يمتلك Minecraft Java Edition.',
+  'de-CH': 'Schlüssel und Tokens werden geschützt unter Windows gespeichert. Für offizielle Server brauchst du ein Microsoft-Konto mit Minecraft Java Edition.',
+  nb: 'Nøkler og tokener lagres i beskyttet Windows-lagring. Offisielle servere krever en Microsoft-konto som eier Minecraft Java Edition.',
+};
 settingsPage = function () {
   const navigation = tabs([['general',t('general')],['appearance',t('appearance')],['game',t('game')],['about',t('about')]], settingsTab, 'data-settings-tab');
   const heading = `<section class="page-intro"><div><div class="eyebrow">ASTRA</div><h1>${t('settings')}</h1><p>${t('settingsIntro')}</p></div><span class="autosave">${icon('check')} ${t('autoSave')}</span></section>`;
@@ -169,21 +197,23 @@ settingsPage = function () {
   if (settingsTab === 'general') {
     const languageControl = `<select id="language-choice" aria-label="${t('language')}">${languages.map(([code, name]) => `<option value="${code}" ${currentLanguage()===code?'selected':''}>${name}</option>`).join('')}</select>`;
     const startControl = `<select id="start-page" aria-label="${t('startPage')}">${[['discover',t('discover')],['library',t('library')],['mods',t('catalog')]].map(([value,label])=>`<option value="${value}" ${(state.startPage||'discover')===value?'selected':''}>${label}</option>`).join('')}</select>`;
-    content = `<h2>${t('behavior')}</h2>${settingRow(t('startPage'),t('startHint'),startControl)}${settingRow(t('language'),t('languageHint'),languageControl)}${settingRow(t('profile'),t('profileHint'),`<button class="button secondary" data-action="account">${esc(state.profile)} ${icon('arrow')}</button>`)}${settingRow(t('importProfile'),t('importHint'),`<button class="button secondary" data-action="import">${t('importAction')}</button>`)}`;
-    content += `<h2 class="integration-heading">${t('integrations')}</h2>${settingRow('CurseForge API',integrationStatus.curseforgeReady?t('keySaved'):t('keyMissing'),`<button class="button secondary" data-live-config="curseforge">${integrationStatus.curseforgeReady?t('changeKey'):t('addKey')}</button>`)}${settingRow('Microsoft Client ID',integrationStatus.microsoftClientId?esc(integrationStatus.microsoftClientId):t('clientHint'),`<button class="button secondary" data-live-config="microsoft">${integrationStatus.microsoftClientId?t('changeId'):t('addId')}</button>`)}<div class="quiet-note">${icon('info')} ${t('integrationNote')}</div>`;
+    content = `<h2>${t('behavior')}</h2>${settingRow(t('startPage'),t('startHint'),startControl)}${settingRow(t('language'),t('languageHint'),languageControl)}${settingRow(t('importProfile'),t('importHint'),`<button class="button secondary" data-action="import">${t('importAction')}</button>`)}`;
+    content += `<h2 class="integration-heading">${t('integrations')}</h2>${settingRow('CurseForge API',integrationStatus.curseforgeReady?t('keySaved'):t('keyMissing'),`<button class="button secondary" data-live-config="curseforge">${integrationStatus.curseforgeReady?t('changeKey'):t('addKey')}</button>`)}${settingRow('Microsoft Client ID',integrationStatus.microsoftClientId?esc(integrationStatus.microsoftClientId):t('clientHint'),`<button class="button secondary" data-live-config="microsoft">${integrationStatus.microsoftClientId?t('changeId'):t('addId')}</button>`)}<div class="quiet-note">${icon('info')} ${connectionNoteCopy[currentLanguage()] || connectionNoteCopy.ru}</div>`;
   } else if (settingsTab === 'appearance') {
     content = `<h2>${t('yourAstra')}</h2><p class="appearance-hint">${t('chooseTheme')}</p><div class="appearance-choices expanded">${Object.entries(palettes).map(([id,palette])=>`<button class="theme-card ${state.theme===id?'selected':''}" data-theme="${id}" aria-pressed="${state.theme===id}"><span class="theme-mini palette-mini" style="--preview-bg:${palette.bg};--preview-side:${palette.sidebar};--preview-panel:${palette.panel};--preview-accent:${palette.accent}"><i></i><b></b><em></em></span><span>${themeName(id)} ${state.theme===id?icon('check'):''}</span></button>`).join('')}</div>${settingRow(t('accent'),t('accentHint'),`<div class="segmented"><button data-accent="purple" class="${state.accent!=='mono'?'selected':''}">${t('purple')}</button><button data-accent="mono" class="${state.accent==='mono'?'selected':''}">${t('mono')}</button></div>`)}${settingRow(t('compact'),t('compactHint'),`<label class="switch"><input aria-label="${t('compact')}" type="checkbox" id="compact-ui" ${state.compact?'checked':''}><span></span></label>`)}`;
   } else if (settingsTab === 'game') {
-    const [memoryHint, javaHint, automatic, backupHint, soon] = runtimeCopy[currentLanguage()] || runtimeCopy.ru;
-    content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),memoryHint,`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',javaHint,`<span class="setting-value">${automatic}</span>`)}${settingRow(t('backups'),backupHint,`<span class="setting-value">${soon}</span>`)}`;
+    const [memoryHint, javaHint, automatic] = runtimeCopy[currentLanguage()] || runtimeCopy.ru;
+    const [backupHint, retentionTitle, retentionHint] = backupSettingsCopy[currentLanguage()] || backupSettingsCopy.ru;
+    const limit = [3, 5, 10].includes(Number(state.backupLimit)) ? Number(state.backupLimit) : 5;
+    content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),memoryHint,`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',javaHint,`<span class="setting-value">${automatic}</span>`)}${settingRow(t('backups'),backupHint,`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups!==false?'checked':''}><span></span></label>`)}${settingRow(retentionTitle,retentionHint,`<select id="backup-limit" aria-label="${retentionTitle}">${[3,5,10].map(count=>`<option value="${count}" ${limit===count?'selected':''}>${count}</option>`).join('')}</select>`)}`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.4</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.5</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };
 
 discover = function () {
-  return `<section class="page-intro"><div><div class="eyebrow">ASTRA LAUNCHER</div><h1>${t('homeTitle')}</h1><p>${t('homeIntro')}</p></div><button class="button secondary" data-action="create">+ <span>${t('createPack')}</span></button></section><section class="hero">${art('forest','home-hero')}<div class="hero-shade"></div><div class="hero-content"><span class="hero-kicker">✧ MODRINTH</span><h2>${t('homeTitle')}</h2><p>${t('liveIntro')}</p><button class="button light" data-page="mods">${t('openCatalog')} ${icon('arrow')}</button></div><span class="hero-corner">ASTRA CATALOG</span></section><section class="quick-row"><button data-page="library"><span class="quick-icon">${icon('folder')}</span><span><strong>${t('libraryTitle')}</strong><small>${t('libraryIntro')}</small></span>${icon('arrow')}</button><button data-page="mods"><span class="quick-icon">${icon('cube')}</span><span><strong>${t('liveCatalog')}</strong><small>Modrinth · CurseForge</small></span>${icon('arrow')}</button></section><div class="designed-empty compact-discover"><span class="empty-symbol">${icon('cube')}</span><h2>${t('liveCatalog')}</h2><p>${t('liveIntro')}</p><button class="button light" data-page="mods">${t('explore')} ${icon('arrow')}</button></div>`;
+  return `<section class="page-intro"><div><div class="eyebrow">ASTRA LAUNCHER</div><h1>${t('homeTitle')}</h1><p>${t('homeIntro')}</p></div><button class="button secondary" data-action="create">+ <span>${t('createPack')}</span></button></section><section class="hero">${art('forest','home-hero')}<div class="hero-shade"></div><div class="hero-content"><span class="hero-kicker">✧ MODRINTH</span><h2>${t('liveCatalog')}</h2><p>${t('liveIntro')}</p><button class="button light" data-page="mods">${t('openCatalog')} ${icon('arrow')}</button></div><span class="hero-corner">ASTRA CATALOG</span></section><section class="quick-row"><button data-page="library"><span class="quick-icon">${icon('folder')}</span><span><strong>${t('libraryTitle')}</strong><small>${t('libraryIntro')}</small></span>${icon('arrow')}</button></section>`;
 };
 library = function () {
   return `<section class="page-intro"><div><div class="eyebrow">ASTRA</div><h1>${t('libraryTitle')}<span class="heading-count">${state.packs.length}</span></h1><p>${t('libraryIntro')}</p></div><button class="button light" data-action="create">+ ${t('createPack')}</button></section><div class="pack-grid">${state.packs.map(p=>`<article class="pack-card"><button class="pack-art" data-pack="${esc(p.id)}">${art(p.art,p.id)}<span class="pill">${esc(p.loader)} · ${esc(p.version)}</span></button><div class="pack-info"><button class="pack-title" data-pack="${esc(p.id)}">${esc(p.name)}</button><p>${installedRecordsForPack(p,'mods').length} ${t('mods')}</p><div><button class="button secondary" data-pack-settings="${esc(p.id)}">${t('settings')}</button><button class="button light compact" data-launch="${esc(p.id)}" aria-label="${esc(p.name)}" ${loaderAvailable(p.version,p.loader)?'':'disabled title="Select a compatible loader in settings"'}>${icon('play')}</button></div></div></article>`).join('')}<button class="new-pack" data-action="create"><span>+</span><strong>${t('newPack')}</strong><small>${t('newPackHint')}</small></button></div>`;
@@ -242,7 +272,7 @@ searchLive = async function (append = false) { await baseSearchLive(append); tra
 function translateView() {
   if (currentLanguage() === 'ru') return;
   const reverse = new Map(Object.entries(words.ru).map(([key,value])=>[value,key]));
-  const nodes = [$('#main'),$('#navigation'),$('#side-packs'),$('#profile-label'),$('#current-page'),$('.sidebar'),$('footer'),$('#modal-content')].filter(Boolean);
+  const nodes = [$('#main'), $('#navigation'), $('#side-packs'), $('.sidebar'), $('#modal-content')].filter(Boolean);
   const seen = new Set();
   for (const root of nodes) {
     if (seen.has(root)) continue; seen.add(root);
@@ -270,8 +300,6 @@ function translateView() {
   if (page === 'mods' && status && liveItems.length && !status.querySelector('button')) status.textContent = `${new Intl.NumberFormat(currentLanguage()).format(liveItems.length)} / ${new Intl.NumberFormat(currentLanguage()).format(liveTotal)} · ${liveSource==='modrinth'?'Modrinth':'CurseForge'}`;
   const sidebarHeading = document.querySelector('.sidebar > .nav-label');
   if (sidebarHeading) sidebarHeading.textContent = 'ASTRA';
-  const supportTitle = document.querySelector('.support div');
-  if (supportTitle?.firstChild?.nodeType === Node.TEXT_NODE) supportTitle.firstChild.textContent = 'Astra';
 }
 
 document.addEventListener('change', event => {
