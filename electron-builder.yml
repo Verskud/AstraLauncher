@@ -1,0 +1,18 @@
+appId: app.astralauncher.desktop
+productName: AstraLauncher
+directories:
+  output: release
+  buildResources: build
+files:
+  - src/**/*
+  - package.json
+asar: true
+npmRebuild: false
+win:
+  target:
+    - target: portable
+      arch: [x64]
+  icon: src/renderer/assets/astra-icon.png
+  artifactName: AstraLauncher-${version}.exe
+portable:
+  requestExecutionLevel: user
