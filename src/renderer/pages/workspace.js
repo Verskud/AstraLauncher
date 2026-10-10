@@ -4,6 +4,7 @@ let packTab = 'mods';
 let settingsTab = 'general';
 let collectionQuery = '';
 let downloadExample = null;
+let catalogTargetPackId = null;
 
 const catalogTabs = [['mods','Моды'],['modpacks','Сборки'],['shaders','Шейдеры'],['resources','Ресурспаки']];
 const collections = {
@@ -74,7 +75,7 @@ function packPage() {
   if(packTab==='mods')return existing.replace('<section class="section-heading">',navigation+'<section class="section-heading">')+installedMarkup;
   const header=existing.slice(0,existing.indexOf('<section class="section-heading">'));
   if(packTab==='worlds')return `${header}${navigation}<div class="designed-empty"><span class="empty-symbol">${icon('world')}</span><h2>Здесь начнётся твой мир</h2><p>После первого запуска здесь появятся сохранения.<br>Миры можно будет импортировать и сохранять в резервные копии.</p><button class="button secondary" data-ui-action="world-import">${icon('folder')} Импортировать мир</button></div>`;
-  if(packTab==='options')return `${header}${navigation}<div class="settings-panel"><form id="pack-options-form"><div class="field-heading"><h2>Параметры сборки</h2><span>Сохраняются на этом устройстве</span></div><label class="field">Название<input name="name" value="${esc(p.name)}" required maxlength="48"></label><div class="form-row"><label class="field">Версия<input value="Minecraft ${esc(p.version)}" readonly></label><label class="field">Загрузчик<input value="${esc(p.loader)}" readonly></label></div>${coverPicker(p.art,'pack-options-form-cover-art')}<button class="button light">Сохранить изменения</button></form><div class="setting"><div><strong>Экспорт профиля</strong><p>Название, параметры и список выбранных модов.</p></div><button class="button secondary" data-action="export">${icon('down')} Экспорт</button></div><div class="setting"><div><strong>Удалить сборку</strong><p>Удаление только профиля в этом макете.</p></div><button class="text-button danger" data-action="delete">Удалить</button></div></div>`;
+  if(packTab==='options'){const chosenLoader=loaderAvailable(p.version,p.loader)?p.loader:'Forge';return `${header}${navigation}<div class="settings-panel"><form id="pack-options-form"><div class="field-heading"><h2>Параметры сборки</h2><span>Сохраняются на этом устройстве</span></div><label class="field">Название<input name="name" value="${esc(p.name)}" required maxlength="48"></label><div class="form-row"><label class="field">Версия<input value="Minecraft ${esc(p.version)}" readonly></label><label class="field">Загрузчик<select name="loader">${profileLoaders.map(name=>`<option value="${name}" ${chosenLoader===name?'selected':''} ${!loaderAvailable(p.version,name)?'disabled':''}>${name}</option>`).join('')}</select></label></div>${p.loader==='NeoForge'&&!loaderAvailable(p.version,p.loader)?'<div class="info-box">NeoForge не подходит для этой версии. Выбери Forge или Vanilla и сохрани настройки. Игровые файлы и миры останутся на месте.</div>':''}${coverPicker(p.art,'pack-options-form-cover-art')}<button class="button light">Сохранить изменения</button></form><div class="setting"><div><strong>Экспорт профиля</strong><p>Название, параметры и список выбранных модов.</p></div><button class="button secondary" data-action="export">${icon('down')} Экспорт</button></div><div class="setting"><div><strong>Удалить сборку</strong><p>Удаление только профиля в этом макете.</p></div><button class="text-button danger" data-action="delete">Удалить</button></div></div>`;}
   const items=(p[packTab]||[]).map(id=>collections[packTab].find(item=>item.id===id)).filter(Boolean);
   const label=packTab==='shaders'?'Шейдеры':'Ресурспаки';
   const collectionMarkup=items.length?`<div class="mod-list">${items.map(item=>`<div class="mod-list-item"><span class="pack-mini ${item.art}">${icon(packTab==='shaders'?'sun':'cube')}</span><div><strong>${item.name}</strong><small>Выбрано в макете · ${item.by}</small></div><button class="icon-button push-right" data-remove-collection="${item.id}" data-kind="${packTab}" aria-label="Удалить ${item.name}">${icon('close')}</button></div>`).join('')}</div>`:installed.length?'':`<div class="designed-empty"><span class="empty-symbol">${icon(packTab==='shaders'?'sun':'cube')}</span><h2>Немного нового настроения</h2><p>Выбери ${label.toLowerCase()} в каталоге.<br>Здесь будет твоя личная подборка.</p><button class="button secondary" data-open-catalog="${packTab}">Открыть каталог ${icon('arrow')}</button></div>`;
@@ -135,7 +136,7 @@ document.addEventListener('click',e=>{
   if(d.catalogTab){catalogType=d.catalogTab;collectionQuery='';render();}
   if(d.packTab){packTab=d.packTab;render();}
   if(d.settingsTab){settingsTab=d.settingsTab;render();}
-  if(d.openCatalog){catalogType=d.openCatalog;collectionQuery='';go('mods');}
+  if(d.openCatalog){catalogTargetPackId=selectedPack;catalogType=d.openCatalog;collectionQuery='';go('mods');}
   if(d.collection)collectionModal(d.kind,d.collection);
   if(d.addCollection){
     const item=collections[d.kind]?.find(item=>item.id===d.addCollection);
@@ -175,7 +176,9 @@ document.addEventListener('submit',e=>{
   if(!p||!name)return;
   const cover=String(data.get('art'));
   if(!coverTemplates.some(([id])=>id===cover))return;
-  p.name=name;p.art=cover;save();render();toast('Параметры сборки сохранены');
+  const loader=String(data.get('loader'));
+  if(!profileLoaders.includes(loader)||!loaderAvailable(p.version,loader)){toast('Этот загрузчик не подходит для версии Minecraft.');return}
+  p.name=name;p.art=cover;p.loader=loader;save();render();toast('Параметры сборки сохранены');
 });
 
 function restoreRoute(){

@@ -91,8 +91,13 @@ downloadsPage = function () {
 function projectModal(index) {
   const item = liveItems[index];
   if (!item) return;
-  const profiles = item.kind === 'modpacks' ? '' : state.packs.map(p => `<option value="${esc(p.id)}" ${item.kind==='mods'&&p.loader==='Vanilla'?'disabled':''}>${esc(p.name)} · ${esc(p.version)} · ${esc(p.loader)}</option>`).join('');
-  showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · ${esc(liveLabels[item.kind])}</span><h2>${esc(item.name)}</h2><p>${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><form id="live-download-form" data-index="${index}"><label>Куда сохранить<select name="profile"><option value="">В Загрузки/AstraLauncher</option>${profiles}</select></label><button class="button light full">Скачать / установить ${icon('down')}</button></form><button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button><div class="info-box">Выбери сборку, чтобы установить файл прямо в её папку. Для шейдеров понадобится совместимый мод, например Iris или Oculus.</div>`);
+  const choices = item.kind === 'modpacks' ? [] : state.packs.filter(p => item.kind !== 'mods' || p.loader !== 'Vanilla' && loaderAvailable(p.version,p.loader));
+  const preferred = catalogTargetPackId ? choices.find(p => p.id === catalogTargetPackId) : choices[0];
+  const target = state.packs.find(p => p.id === catalogTargetPackId);
+  const invalidTarget = item.kind !== 'modpacks' && target && !choices.includes(target);
+  const targetWarning = invalidTarget ? `${esc(target.name)} не подходит для этого мода. Открой параметры сборки и выбери совместимый загрузчик. ` : '';
+  const profiles = choices.map(p => `<option value="${esc(p.id)}" ${p.id===preferred?.id?'selected':''}>${esc(p.name)} · ${esc(p.version)} · ${esc(p.loader)}</option>`).join('');
+  showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · ${esc(liveLabels[item.kind])}</span><h2>${esc(item.name)}</h2><p>${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><form id="live-download-form" data-index="${index}"><label>Куда сохранить<select name="profile" required>${invalidTarget?'<option value="" selected disabled>Выбери совместимую сборку или Загрузки</option>':''}${profiles}<option value="downloads" ${!preferred&&!invalidTarget?'selected':''}>В Загрузки/AstraLauncher (без установки)</option></select></label><button class="button light full">Скачать / установить ${icon('down')}</button></form><button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button><div class="info-box">${targetWarning}${preferred?'Выбрана сборка: '+esc(preferred.name)+'. Файл будет установлен в её игровую папку.':'Создай совместимую сборку, чтобы установить файл сразу в игру.'} Для шейдеров понадобится совместимый мод, например Iris или Oculus.</div>`);
 }
 
 function configModal(kind) {
@@ -163,7 +168,8 @@ document.addEventListener('submit', async event => {
     const index = Number(event.target.dataset.index);
     const item = liveItems[index];
     if (!item) return;
-    const profileId = String(new FormData(event.target).get('profile') || '');
+    const selectedDestination = String(new FormData(event.target).get('profile') || '');
+    const profileId = selectedDestination === 'downloads' ? '' : selectedDestination;
     const profile = state.packs.find(pack => pack.id === profileId);
     const button = event.target.querySelector('button');
     button.disabled = true; button.textContent = 'Скачиваем…';
@@ -171,6 +177,7 @@ document.addEventListener('submit', async event => {
       const result = await window.astraDesktop.downloadProject({ source: item.source, kind: item.kind, id: item.id, gameVersion: profile?.version || '', loader: profile && profile.loader !== 'Vanilla' ? profile.loader.toLowerCase() : '', profileId: profile?.id || '' });
       state.downloads = [{ ...result, name: item.name, source: item.source }, ...(result.installedDependencies||[]), ...(state.downloads || [])].slice(0, 100);
       save(); modal.close(); toast(`${profile?'Установлено в сборку':'Скачано'}: ${result.filename}`);
+      if (profile) { selectedPack=profile.id; packTab=item.kind; go('pack'); }
       if (result.missingDependencies?.length) showModal(`<h2>Мод установлен не полностью</h2><p>Не удалось загрузить обязательные зависимости.</p><div class="info-box">${esc(result.missingDependencies.join('; '))}</div><button class="button light full" data-live-open="${index}">Проверить на Modrinth ${icon('arrow')}</button>`);
       else if (result.dependencies && item.source === 'curseforge') showModal(`<h2>Проверь зависимости</h2><p>Файл установлен, но у него ${result.dependencies} обязательных зависимостей CurseForge. Их нужно добавить отдельно.</p><button class="button light full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button>`);
     } catch (error) { toast(humanError(error)); button.disabled = false; button.innerHTML = `Скачать / установить ${icon('down')}`; }

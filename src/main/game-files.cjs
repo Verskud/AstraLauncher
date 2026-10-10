@@ -69,7 +69,7 @@ async function downloadFile(url, target, hash, algorithm = 'sha1') {
   }
 }
 function relativePath(root, relative) {
-  if (typeof relative !== 'string' || !relative || relative.includes('\\') || relative.split('/').some(part => !part || part === '.' || part === '..' || !/^[\w.+()-]+$/.test(part))) throw new Error('Недопустимый путь файла.');
+  if (typeof relative !== 'string' || !relative || relative.includes('\\') || relative.split('/').some(part => !part || part === '.' || part === '..' || !/^[\w.+()@-]+$/.test(part))) throw new Error('Недопустимый путь файла.');
   return path.join(root, ...relative.split('/'));
 }
 module.exports = { getJson, downloadFile, relativePath, hashFile };

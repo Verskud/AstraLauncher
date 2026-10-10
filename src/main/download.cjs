@@ -56,7 +56,7 @@ async function resolveCurseForge(request) {
 async function download(request) {
   assertProject(request);
   if (request.profileId && request.kind === 'modpacks') throw new Error('Сборки .mrpack нельзя положить в папку модов. Импорт сборок появится отдельно.');
-  if (request.profileId && (!request.gameVersion || !request.loader)) throw new Error('Для установки выбери сборку.');
+  if (request.profileId && (!request.gameVersion || request.kind === 'mods' && !request.loader)) throw new Error('Для установки мода выбери сборку с загрузчиком.');
   const resolved = request.source === 'modrinth' ? await resolveModrinth(request) : await resolveCurseForge(request);
   const result = await saveResolved(request, resolved);
   if (request.profileId && request.source === 'modrinth' && request.kind === 'mods') {

@@ -83,12 +83,14 @@ function libraryJar(root, library) {
   if (!allowedLibrary(library)) return null;
   const classifier = String(library.name || '').split(':')[3];
   if (classifier?.startsWith('natives-windows') && classifier !== 'natives-windows') return null;
+  if (library.natives?.windows && !library.downloads?.artifact) return null;
   const relative = library.downloads?.artifact?.path || (library.name ? mavenPath(library.name) : null);
   return relative ? relativePath(root, `libraries/${relative}`) : null;
 }
 function mergeLibraries(base, overlay) {
   const map = new Map();
   for (const library of [...base, ...(overlay || [])]) {
+    if (!allowedLibrary(library)) continue;
     const parts = String(library.name || '').split(':');
     map.set(parts.length >= 2 ? `${parts[0]}:${parts[1]}:${parts[3] || ''}` : library.name, library);
   }
@@ -113,10 +115,10 @@ async function launch(profile, context) {
     const jar = libraryJar(minecraftRoot, library);
     if (jar) { await fs.access(jar); classpath.push(jar); }
   }
-  if (!['Forge','NeoForge'].includes(profile.loader)) classpath.push(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.jar`));
+  if (!['Forge','NeoForge'].includes(profile.loader) || loader?.minecraftArguments) classpath.push(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.jar`));
   const account = profile.accountMode === 'microsoft' ? await microsoft.minecraftAccount() : offlineAccount(profile.playerName || 'Player');
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.0',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.1',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,
@@ -130,7 +132,9 @@ async function launch(profile, context) {
   };
   const loaderArguments = loader?.arguments || loader?.args;
   const jvm = [...args(metadata.arguments?.jvm || ['-Djava.library.path=${natives_directory}', '-cp', '${classpath}'], substitutions), ...args(loaderArguments?.jvm, substitutions)];
-  const game = [...args(metadata.arguments?.game || String(metadata.minecraftArguments || '').split(' '), substitutions), ...args(loaderArguments?.game, substitutions)];
+  const game = loader?.minecraftArguments
+    ? args(String(loader.minecraftArguments).split(/\s+/), substitutions)
+    : [...args(metadata.arguments?.game || String(metadata.minecraftArguments || '').split(/\s+/), substitutions), ...args(loaderArguments?.game, substitutions)];
   const mainClass = loader?.mainClass || metadata.mainClass;
   if (!/^[\w.$]+$/.test(mainClass)) throw new Error('Некорректный главный класс Minecraft.');
   const memory = Number(profile.memory);
@@ -139,8 +143,9 @@ async function launch(profile, context) {
   const child = spawn(java, params, { cwd: directory, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   running = { child, id: profile.id, log: '' };
   for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { if (running?.child === child) running.log = (running.log + chunk.toString()).slice(-8000); });
-  child.on('error', error => { if (running?.child === child) { running = null; onProgress({ phase: 'error', message: error.message }); } });
-  child.on('close', code => { if (running?.child === child) { running = null; onProgress({ phase: code === 0 ? 'closed' : 'error', message: code === 0 ? 'Игра закрыта.' : `Игра завершилась с кодом ${code}. Журнал: ${path.join(directory, 'logs', 'latest.log')}` }); } });
+  const launchLog = path.join(directory, 'astra-launch.log');
+  child.on('error', async error => { if (running?.child === child) { await fs.writeFile(launchLog, `${running.log}\n${error.message}`, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: 'error', message: `${error.message} Журнал: ${launchLog}` }); } });
+  child.on('close', async code => { if (running?.child === child) { await fs.writeFile(launchLog, running.log, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: code === 0 ? 'closed' : 'error', message: code === 0 ? 'Игра закрыта.' : `Игра завершилась с кодом ${code}. Журнал: ${launchLog}` }); } });
   return { started: true, profileId: profile.id };
 }
 function status() { return running ? { running: true, profileId: running.id, pid: running.child.pid } : { running: false }; }

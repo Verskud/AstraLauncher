@@ -2,6 +2,11 @@
 let minecraftManifest = null;
 let versionRequest = null;
 const profileLoaders = ['Vanilla', 'Fabric', 'Forge', 'NeoForge', 'Quilt'];
+function loaderAvailable(version, name) {
+  if (name !== 'NeoForge') return true;
+  const match = /^1\.(\d+)(?:\.(\d+))?$/.exec(version);
+  return !!match && (Number(match[1]) > 20 || Number(match[1]) === 20 && Number(match[2] || 0) >= 2);
+}
 const versionLabels = {
   ru: ['Релизы', 'Снапшоты', 'Старая бета', 'Старая альфа', 'Все версии', 'Найти версию…', 'Загружаем версии…', 'Версии не найдены', 'Список сохранён на устройстве', 'Каталог обновлён', 'Не удалось обновить каталог', 'Для исторических версий и снапшотов пока доступен только профиль Vanilla.', 'Загрузчик отмечается в профиле. Установка и совместимость будут проверяться при подключении игрового запуска.'],
   en: ['Releases', 'Snapshots', 'Old beta', 'Old alpha', 'All versions', 'Find a version…', 'Loading versions…', 'No versions found', 'Saved version list', 'Catalog updated', 'Could not refresh catalog', 'Only Vanilla profiles are available for snapshots and historical versions.', 'The loader is recorded in this profile. Installation and compatibility checks will follow with game launching.'],
@@ -34,9 +39,10 @@ function updateLoaderForVersion() {
   const note = document.querySelector('#version-note');
   if (!loader || !note) return;
   const release = selectedVersionType() === 'release';
-  for (const option of loader.options) if (option.value !== 'Vanilla') option.disabled = !release;
-  if (!release) loader.value = 'Vanilla';
-  note.textContent = release ? vLabel(12) : vLabel(11);
+  const version = document.querySelector('#version-choice')?.value || '';
+  for (const option of loader.options) if (option.value !== 'Vanilla') option.disabled = !release || !loaderAvailable(version, option.value);
+  if (loader.selectedOptions[0]?.disabled) loader.value = 'Vanilla';
+  note.textContent = release ? version === '1.12.2' ? 'Для Minecraft 1.12.2 используй Forge или Fabric. NeoForge доступен в Astra с 1.20.2.' : vLabel(12) : vLabel(11);
 }
 
 function renderVersionChoices(preferred) {
