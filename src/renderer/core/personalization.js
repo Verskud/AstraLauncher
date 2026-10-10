@@ -11,6 +11,27 @@ const palettes = {
   ocean: { bg: '#0e1a23', sidebar: '#12222d', panel: '#192b37', accent: '#82c4db' },
   forest: { bg: '#111b16', sidebar: '#17251d', panel: '#1e2d24', accent: '#98c8a6' },
   ember: { bg: '#211711', sidebar: '#281c16', panel: '#32241d', accent: '#e5aa84' },
+  frost: { bg: '#121d25', sidebar: '#1a2a34', panel: '#223541', accent: '#b9dcec' },
+  rose: { bg: '#241820', sidebar: '#301e2a', panel: '#3b2633', accent: '#e3a8c2' },
+  copper: { bg: '#251b16', sidebar: '#31231b', panel: '#3d2c22', accent: '#dda676' },
+  aurora: { bg: '#101e1d', sidebar: '#162b29', panel: '#1d3532', accent: '#8fd9c2' },
+  slate: { bg: '#181d28', sidebar: '#202838', panel: '#293348', accent: '#a9badc' },
+  sand: { bg: '#242018', sidebar: '#302a1e', panel: '#3b3426', accent: '#dbc693' },
+};
+const extraThemeIds = ['frost','rose','copper','aurora','slate','sand'];
+const extraThemeNames = {
+  ru: ['Иней','Роза','Медь','Аврора','Сланец','Песок'],
+  en: ['Frost','Rose','Copper','Aurora','Slate','Sand'],
+  de: ['Frost','Rose','Kupfer','Aurora','Schiefer','Sand'],
+  fr: ['Givre','Rose','Cuivre','Aurore','Ardoise','Sable'],
+  es: ['Escarcha','Rosa','Cobre','Aurora','Pizarra','Arena'],
+  ko: ['서리','장미','구리','오로라','슬레이트','모래'],
+  ja: ['霜','ローズ','銅','オーロラ','スレート','砂'],
+  'zh-CN': ['霜色','玫瑰','赤铜','极光','石板','沙色'],
+  'zh-TW': ['霜色','玫瑰','赤銅','極光','石板','沙色'],
+  ar: ['الصقيع','الوردي','النحاسي','الشفق','الأردواز','الرمال'],
+  'de-CH': ['Frost','Rose','Kupfer','Aurora','Schiefer','Sand'],
+  nb: ['Frost','Rose','Kobber','Nordlys','Skifer','Sand'],
 };
 const words = {
   ru: {
@@ -105,6 +126,10 @@ const words = {
 words['de-CH'] = Object.fromEntries(Object.entries(words.de).map(([key,value]) => [key,value.replaceAll('ß','ss')]));
 const currentLanguage = () => languages.some(([code]) => code === state.language) ? state.language : 'ru';
 const t = key => (words[currentLanguage()] || words.en)[key] || words.en[key] || words.ru[key] || key;
+const themeName = id => {
+  const index = extraThemeIds.indexOf(id);
+  return index < 0 ? t(id) : (extraThemeNames[currentLanguage()] || extraThemeNames.en)[index];
+};
 
 settingsPage = function () {
   const navigation = tabs([['general',t('general')],['appearance',t('appearance')],['game',t('game')],['about',t('about')]], settingsTab, 'data-settings-tab');
@@ -116,11 +141,11 @@ settingsPage = function () {
     content = `<h2>${t('behavior')}</h2>${settingRow(t('startPage'),t('startHint'),startControl)}${settingRow(t('language'),t('languageHint'),languageControl)}${settingRow(t('profile'),t('profileHint'),`<button class="button secondary" data-action="account">${esc(state.profile)} ${icon('arrow')}</button>`)}${settingRow(t('importProfile'),t('importHint'),`<button class="button secondary" data-action="import">${t('importAction')}</button>`)}`;
     content += `<h2 class="integration-heading">${t('integrations')}</h2>${settingRow('CurseForge API',integrationStatus.curseforgeReady?t('keySaved'):t('keyMissing'),`<button class="button secondary" data-live-config="curseforge">${integrationStatus.curseforgeReady?t('changeKey'):t('addKey')}</button>`)}${settingRow('Microsoft Client ID',integrationStatus.microsoftClientId?esc(integrationStatus.microsoftClientId):t('clientHint'),`<button class="button secondary" data-live-config="microsoft">${integrationStatus.microsoftClientId?t('changeId'):t('addId')}</button>`)}<div class="quiet-note">${icon('info')} ${t('integrationNote')}</div>`;
   } else if (settingsTab === 'appearance') {
-    content = `<h2>${t('yourAstra')}</h2><p class="appearance-hint">${t('chooseTheme')}</p><div class="appearance-choices expanded">${Object.entries(palettes).map(([id,palette])=>`<button class="theme-card ${state.theme===id?'selected':''}" data-theme="${id}" aria-pressed="${state.theme===id}"><span class="theme-mini palette-mini" style="--preview-bg:${palette.bg};--preview-side:${palette.sidebar};--preview-panel:${palette.panel};--preview-accent:${palette.accent}"><i></i><b></b><em></em></span><span>${t(id)} ${state.theme===id?icon('check'):''}</span></button>`).join('')}</div>${settingRow(t('accent'),t('accentHint'),`<div class="segmented"><button data-accent="purple" class="${state.accent!=='mono'?'selected':''}">${t('purple')}</button><button data-accent="mono" class="${state.accent==='mono'?'selected':''}">${t('mono')}</button></div>`)}${settingRow(t('compact'),t('compactHint'),`<label class="switch"><input aria-label="${t('compact')}" type="checkbox" id="compact-ui" ${state.compact?'checked':''}><span></span></label>`)}`;
+    content = `<h2>${t('yourAstra')}</h2><p class="appearance-hint">${t('chooseTheme')}</p><div class="appearance-choices expanded">${Object.entries(palettes).map(([id,palette])=>`<button class="theme-card ${state.theme===id?'selected':''}" data-theme="${id}" aria-pressed="${state.theme===id}"><span class="theme-mini palette-mini" style="--preview-bg:${palette.bg};--preview-side:${palette.sidebar};--preview-panel:${palette.panel};--preview-accent:${palette.accent}"><i></i><b></b><em></em></span><span>${themeName(id)} ${state.theme===id?icon('check'):''}</span></button>`).join('')}</div>${settingRow(t('accent'),t('accentHint'),`<div class="segmented"><button data-accent="purple" class="${state.accent!=='mono'?'selected':''}">${t('purple')}</button><button data-accent="mono" class="${state.accent==='mono'?'selected':''}">${t('mono')}</button></div>`)}${settingRow(t('compact'),t('compactHint'),`<label class="switch"><input aria-label="${t('compact')}" type="checkbox" id="compact-ui" ${state.compact?'checked':''}><span></span></label>`)}`;
   } else if (settingsTab === 'game') {
     content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),t('memoryHint'),`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',t('gameNote'),`<span class="setting-value">Java 17 / 21</span>`)}${settingRow(t('backups'),t('backupsHint'),`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups?'checked':''}><span></span></label>`)}<div class="quiet-note">${icon('info')} ${t('gameNote')}</div>`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.6.0</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.7.0</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };
@@ -169,6 +194,7 @@ applyAppearance = function () {
   document.body.style.setProperty('--panel', palette.panel);
   document.body.style.setProperty('--theme-sidebar', palette.sidebar);
   document.body.style.setProperty('--purple', state.accent === 'mono' ? '#d2d2db' : palette.accent);
+  window.astraDesktop?.setWindowTheme?.(state.theme);
 };
 
 const baseRender = render;

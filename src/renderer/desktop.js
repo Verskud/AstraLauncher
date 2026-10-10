@@ -1,7 +1,7 @@
 document.documentElement.classList.add('desktop-app');
-document.addEventListener('click', event => {
-  const control = event.target.closest('[data-window]');
-  if (!control || !window.astraDesktop) return;
-  const action = control.dataset.window;
-  if (['minimize','maximize','close'].includes(action)) window.astraDesktop[action]();
+document.addEventListener('change', event => {
+  if (event.target.name !== 'art') return;
+  const form = event.target.closest('form');
+  const preview = form?.querySelector('.cover-preview');
+  if (preview) preview.innerHTML = art(event.target.value, `${form.id}-cover-art`);
 });

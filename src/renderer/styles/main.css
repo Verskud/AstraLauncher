@@ -25,3 +25,20 @@ dialog{max-height:calc(100vh - 32px);overflow-y:auto;scrollbar-width:thin}
 .version-meta .text-button{flex-shrink:0}
 .version-note{font-size:9px;line-height:1.5;color:#777782}
 @media(max-width:450px){.version-picker .form-row{grid-template-columns:1fr;gap:0}}
+/* Native Windows caption controls occupy the upper right overlay. */
+.desktop-app .toolbar{padding-right:170px}
+.sidebar .brand{margin-top:34px}
+.brand>span{font-size:25px;letter-spacing:1.3px;font-weight:800}
+.brand-sub{letter-spacing:3.3px}
+.cover-preview{position:relative;height:126px;overflow:hidden;border:1px solid #ffffff16;border-radius:8px;margin:-7px 0 18px;background:#1c242b}
+.cover-preview .landscape{width:100%;height:100%;display:block}
+#pack-options-form .cover-preview{height:170px;max-width:520px;margin-top:0}
+@media(max-width:760px){.desktop-app .toolbar{padding-right:150px}.brand img{width:40px;height:40px}}
+.pack-mini.snow{background:#334751;color:#d8e9ee}.pack-mini.cherry{background:#513c4e;color:#e8b4cc}.pack-mini.canyon{background:#50382f;color:#dca782}.pack-mini.lagoon{background:#29464b;color:#9ed2cf}.pack-mini.nether{background:#4b2830;color:#e89b8e}.pack-mini.end{background:#3a3454;color:#d0b9ec}
+#modal-content:has(#create-form){padding:24px 28px}
+#modal-content:has(#create-form) .modal-mark{margin-bottom:9px}
+#create-form{margin-top:14px}
+#create-form>label{margin-bottom:12px}
+#create-form .version-picker{padding:10px 12px 8px;margin-bottom:12px}
+#create-form .cover-preview{height:96px;margin:-3px 0 12px}
+#create-form .full{margin-top:2px}

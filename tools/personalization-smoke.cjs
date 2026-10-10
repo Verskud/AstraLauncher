@@ -10,6 +10,7 @@ if (!path.resolve(tempRoot).startsWith(path.resolve(os.tmpdir()) + path.sep)) th
 app.setPath('userData', tempRoot);
 ipcMain.handle('integrations:status', () => ({ curseforgeReady: false, microsoftClientId: '', microsoftAccount: '' }));
 ipcMain.handle('catalog:search', () => ({ total: 0, items: [] }));
+ipcMain.handle('versions:list', () => ({ ...require('../src/main/data/minecraft-versions.json'), source: 'bundled' }));
 
 async function run() {
   await app.whenReady();
@@ -37,14 +38,14 @@ async function run() {
     }
   }
   await js('document.querySelector("[data-settings-tab=appearance]").click()');
-  check(await js('document.querySelectorAll(".theme-card").length') === 6, 'Expected six themes');
+  check(await js('document.querySelectorAll(".theme-card").length') === 12, 'Expected twelve themes');
   const sidebarColors = new Set();
-  for (const theme of ['dark','graphite','amethyst','ocean','forest','ember']) {
+  for (const theme of ['dark','graphite','amethyst','ocean','forest','ember','frost','rose','copper','aurora','slate','sand']) {
     const result = await js(`(()=>{document.querySelector('[data-theme=${theme}]').click();return {active:document.body.classList.contains('theme-${theme}'),selected:document.querySelector('.theme-card.selected')?.dataset.theme};})()`);
     check(result.active && result.selected === theme, `Theme ${theme} failed: ${JSON.stringify(result)}`);
     sidebarColors.add(await js('getComputedStyle(document.querySelector(".sidebar")).backgroundColor'));
   }
-  check(sidebarColors.size === 6, `Themes should have distinct sidebar colors, got ${sidebarColors.size}`);
+  check(sidebarColors.size === 12, `Themes should have distinct sidebar colors, got ${sidebarColors.size}`);
   await js("document.querySelector('[data-theme=ocean]').click()");
   const accent = await js("(()=>{document.querySelector('[data-accent=mono]').click();return document.body.classList.contains('monochrome')})()");
   check(accent, 'Monochrome accent failed');
@@ -54,7 +55,14 @@ async function run() {
   const saved = await js('({language:document.documentElement.lang,theme:document.body.classList.contains("theme-ocean"),options:document.querySelectorAll("#language-choice option").length})');
   check(saved.language === 'en' && saved.theme && saved.options === 12, `Persistence failed: ${JSON.stringify(saved)}`);
   check(errors.length === 0, `Renderer errors: ${errors.join('; ')}`);
-  fs.writeFileSync(path.join(__dirname, '.personalization-smoke-result.json'), JSON.stringify({ ok: true, packed, languages: languages.length, themes: 6, saved }));
+  await js('createModal()');
+  check(await js('document.querySelectorAll("#create-form select[name=art] option").length') === 9, 'Expected nine covers');
+  const coverChanged = await js('(()=>{const select=document.querySelector("#create-form select[name=art]");select.value="end";select.dispatchEvent(new Event("change",{bubbles:true}));return document.querySelector("#create-form .cover-preview")?.querySelector("svg")?.outerHTML.includes("#82759d")})()');
+  check(coverChanged, 'Cover preview did not update');
+  const savedCover = await js('(()=>{document.querySelector("#modal").close();state.packs.push({id:"cover-smoke",name:"Cover Smoke",version:"1.20.1",loader:"Fabric",art:"forest",mods:[]});selectedPack="cover-smoke";page="pack";packTab="options";render();const select=document.querySelector("#pack-options-form select[name=art]");select.value="cherry";select.dispatchEvent(new Event("change",{bubbles:true}));const preview=document.querySelector("#pack-options-form .cover-preview svg")?.outerHTML.includes("#df93ac");document.querySelector("#pack-options-form").requestSubmit();return {preview,cover:state.packs.find(pack=>pack.id==="cover-smoke")?.art}})()');
+  check(savedCover.preview && savedCover.cover === 'cherry', `Editing a cover failed: ${JSON.stringify(savedCover)}`);
+  check(await js('document.querySelector(".brand>span")?.firstChild?.textContent') === 'ASTRA', 'Brand should be uppercase');
+  fs.writeFileSync(path.join(__dirname, '.personalization-smoke-result.json'), JSON.stringify({ ok: true, packed, languages: languages.length, themes: 12, covers: 9, saved }));
   window.close();
 }
 run().then(() => app.quit()).catch(error => {
