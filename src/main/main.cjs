@@ -5,6 +5,7 @@ const catalog = require('./catalog.cjs');
 const preferences = require('./preferences.cjs');
 const microsoft = require('./microsoft.cjs');
 const download = require('./download.cjs');
+const versions = require('./versions.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const entry = path.join(__dirname, '../renderer/index.html');
@@ -104,6 +105,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('catalog:download', request => download.download(request));
     guarded('catalog:show-file', value => download.showFile(value));
     guarded('catalog:open-downloads', () => download.openFolder());
+    guarded('versions:list', refresh => refresh === true ? versions.refresh() : versions.list());
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());

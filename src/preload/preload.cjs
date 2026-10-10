@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   downloadProject: request => ipcRenderer.invoke('catalog:download', request),
   showDownloadedFile: path => ipcRenderer.invoke('catalog:show-file', path),
   openDownloadsFolder: () => ipcRenderer.invoke('catalog:open-downloads'),
+  minecraftVersions: (refresh = false) => ipcRenderer.invoke('versions:list', refresh),
   integrationsStatus: () => ipcRenderer.invoke('integrations:status'),
   saveCurseForgeKey: key => ipcRenderer.invoke('integrations:curseforge', key),
   saveMicrosoftClientId: id => ipcRenderer.invoke('integrations:microsoft-id', id),

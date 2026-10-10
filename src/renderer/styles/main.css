@@ -15,3 +15,13 @@
 html[dir=rtl] .sidebar{border-right:0;border-left:1px solid #ffffff12}html[dir=rtl] .mod-card,html[dir=rtl] .settings-panel,html[dir=rtl] .account-card{text-align:right}html[dir=rtl] .brand,html[dir=rtl] .nav-item,html[dir=rtl] .side-pack,html[dir=rtl] .setting,html[dir=rtl] .toolbar{direction:rtl}html[dir=rtl] .count,html[dir=rtl] .account-dots,html[dir=rtl] .quick-row>button>svg{margin-left:0;margin-right:auto}html[dir=rtl] .text-button,html[dir=rtl] .button{direction:rtl}html[dir=rtl] .mod-title,html[dir=rtl] .collection-body .pack-title{text-align:right}
 @media(max-width:760px){.appearance-choices.expanded{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-panel select#language-choice{max-width:100%}}
 .download-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-left:auto}.download-actions .text-button{white-space:nowrap}
+/* Version selection stays usable in compact launcher windows. */
+dialog{max-height:calc(100vh - 32px);overflow-y:auto;scrollbar-width:thin}
+.version-picker{border:1px solid #ffffff10;border-radius:9px;background:#ffffff03;padding:14px 14px 10px;margin-bottom:18px}
+.version-picker .form-row{gap:10px}
+.version-picker label{margin-bottom:12px}
+.version-picker #version-choice{margin-bottom:0}
+.version-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#85858f;font-size:9px;margin:-3px 0 8px}
+.version-meta .text-button{flex-shrink:0}
+.version-note{font-size:9px;line-height:1.5;color:#777782}
+@media(max-width:450px){.version-picker .form-row{grid-template-columns:1fr;gap:0}}
