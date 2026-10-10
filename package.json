@@ -1,6 +1,6 @@
 {
   "name": "astra-launcher",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "electron": "44.7.0",
     "electron-builder": "26.15.3"
   },
-  "description": "AstraLauncher desktop preview with official mod catalogs",
+  "description": "AstraLauncher desktop Minecraft launcher with profiles and mod catalogs",
   "author": "AstraLauncher",
   "main": "src/main/main.cjs",
   "license": "UNLICENSED"

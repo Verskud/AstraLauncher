@@ -18,7 +18,7 @@ async function refreshIntegrations() {
 results = () => {};
 catalogPage = function () {
   const sourceTabs = `<div class="source-tabs"><button class="${liveSource==='modrinth'?'selected':''}" data-live-source="modrinth">Modrinth</button><button class="${liveSource==='curseforge'?'selected':''}" data-live-source="curseforge">CurseForge${integrationStatus.curseforgeReady?'':' · нужен ключ'}</button></div>`;
-  return `<section class="page-intro"><div><div class="eyebrow">ОФИЦИАЛЬНЫЕ КАТАЛОГИ</div><h1>Каталог</h1><p>Настоящие проекты от авторов на Modrinth и CurseForge.</p></div><span class="subtle">${liveSource==='modrinth'?'Modrinth':'CurseForge'} API</span></section>${tabs(catalogTabs,catalogType,'data-catalog-tab')}${sourceTabs}<div class="search-row"><label class="search">${icon('search')}<input id="live-query" type="search" aria-label="Поиск" placeholder="Найти ${liveLabels[catalogType]}…" value="${esc(liveQuery)}"></label><button class="button secondary" data-live-refresh>Обновить</button></div><div id="live-status" class="live-status">Загружаем каталог…</div><div id="live-results" class="mod-grid"></div><div id="live-more"></div><div class="catalog-note">Карточки и статистика приходят из выбранного источника. Для установки игровых файлов понадобится этап загрузки и запуска Minecraft.</div>`;
+  return `<section class="page-intro"><div><div class="eyebrow">ОФИЦИАЛЬНЫЕ КАТАЛОГИ</div><h1>Каталог</h1><p>Настоящие проекты от авторов на Modrinth и CurseForge.</p></div><span class="subtle">${liveSource==='modrinth'?'Modrinth':'CurseForge'} API</span></section>${tabs(catalogTabs,catalogType,'data-catalog-tab')}${sourceTabs}<div class="search-row"><label class="search">${icon('search')}<input id="live-query" type="search" aria-label="Поиск" placeholder="Найти ${liveLabels[catalogType]}…" value="${esc(liveQuery)}"></label><button class="button secondary" data-live-refresh>Обновить</button></div><div id="live-status" class="live-status">Загружаем каталог…</div><div id="live-results" class="mod-grid"></div><div id="live-more"></div><div class="catalog-note">Выбери сборку в карточке проекта, чтобы установить файл в неё.</div>`;
 };
 
 function safeIcon(item) {
@@ -80,19 +80,19 @@ settingsPage = function () {
 };
 
 accountsPage = function () {
-  return `<section class="page-intro"><div><div class="eyebrow">ТВОЁ ИМЯ В ЭТОМ МИРЕ</div><h1>Аккаунты</h1><p>Управляй локальным профилем и входом Microsoft.</p></div></section><div class="accounts-grid"><article class="account-card"><span class="profile-portrait">${esc(state.profile[0]?.toUpperCase()||'A')}</span><h2>${esc(state.profile)}</h2><p>Локальный профиль</p><span class="profile-caption">Сохранён на этом устройстве</span><button class="button secondary full" data-action="account">Изменить имя</button></article><article class="account-card microsoft-card"><span class="microsoft-symbol"><i></i><i></i><i></i><i></i></span><h2>${esc(integrationStatus.microsoftAccount || 'Microsoft')}</h2><p>${integrationStatus.microsoftAccount?'Аккаунт подключён':'Личный аккаунт Microsoft'}</p><span class="profile-caption">${integrationStatus.microsoftAccount?'Вход выполнен. Проверка Minecraft и запуск пока в разработке.':'Вход через официальный сайт Microsoft в браузере.'}</span><button class="button light full" data-live-microsoft>${integrationStatus.microsoftAccount?'Переподключить':'+ Подключить аккаунт'}</button>${integrationStatus.microsoftAccount?'<button class="text-button disconnect" data-live-disconnect>Отключить аккаунт</button>':''}</article></div><div class="quiet-note">${icon('info')} Игра на официальных серверах появится после проверки владения Minecraft и подключения игрового запуска.</div>`;
+  return `<section class="page-intro"><div><div class="eyebrow">ТВОЁ ИМЯ В ЭТОМ МИРЕ</div><h1>Аккаунты</h1><p>Выбери способ запуска Minecraft.</p></div></section><div class="accounts-grid"><article class="account-card"><span class="profile-portrait">${esc(state.profile[0]?.toUpperCase()||'A')}</span><h2>${esc(state.profile)}</h2><p>Локальный профиль</p><span class="profile-caption">Одиночная игра и серверы, разрешающие локальный вход.</span><button class="button secondary full" data-action="account">Изменить имя</button><button class="button light full" data-live-account-mode="local">${state.accountMode==='microsoft'?'Выбрать':'Выбран'}</button></article><article class="account-card microsoft-card"><span class="microsoft-symbol"><i></i><i></i><i></i><i></i></span><h2>${esc(integrationStatus.microsoftAccount || 'Microsoft')}</h2><p>${integrationStatus.microsoftAccount?'Профиль Minecraft проверен':'Личный аккаунт Microsoft'}</p><span class="profile-caption">${integrationStatus.microsoftAccount?'Подходит для официальных серверов.':'Вход через официальный сайт Microsoft в браузере.'}</span><button class="button light full" data-live-microsoft>${integrationStatus.microsoftAccount?'Переподключить':'+ Подключить аккаунт'}</button>${integrationStatus.microsoftAccount?`<button class="button secondary full" data-live-account-mode="microsoft">${state.accountMode==='microsoft'?'Выбран':'Выбрать для игры'}</button><button class="text-button disconnect" data-live-disconnect>Отключить аккаунт</button>`:''}</article></div>`;
 };
 
 downloadsPage = function () {
   const records = Array.isArray(state.downloads) ? state.downloads : [];
-  return `<section class="page-intro"><div><div class="eyebrow">ТВОИ ФАЙЛЫ</div><h1>Загрузки</h1><p>Скачанные файлы из Modrinth и CurseForge.</p></div></section>${records.length?`<div class="mod-list">${records.map((r,i)=>`<div class="mod-list-item"><span class="mod-icon" style="--mod-color:#705587">${esc((r.name||'?')[0])}</span><div><strong>${esc(r.name)}</strong><small>${esc(r.source)} · ${esc(r.version)} · ${esc(r.filename)}</small></div><button class="button secondary" data-live-show-file="${i}">Показать файл</button></div>`).join('')}</div>`:`<div class="designed-empty"><span class="empty-symbol">${icon('down')}</span><h2>Пока пусто</h2><p>Найди мод, шейдер или сборку в каталоге и скачай файл.</p><button class="button light" data-page="mods">Открыть каталог ${icon('arrow')}</button></div>`}<div class="quiet-note">${icon('info')} Файлы сохраняются в системной папке загрузок. Установка в Minecraft и автоматическая загрузка зависимостей появятся позже.</div>`;
+  return `<section class="page-intro"><div><div class="eyebrow">ТВОИ ФАЙЛЫ</div><h1>Загрузки</h1><p>Скачанные файлы из Modrinth и CurseForge.</p></div></section>${records.length?`<div class="mod-list">${records.map((r,i)=>`<div class="mod-list-item"><span class="mod-icon" style="--mod-color:#705587">${esc((r.name||'?')[0])}</span><div><strong>${esc(r.name)}</strong><small>${esc(r.source)} · ${esc(r.version)} · ${esc(r.filename)}</small></div><button class="button secondary" data-live-show-file="${i}">Показать файл</button></div>`).join('')}</div>`:`<div class="designed-empty"><span class="empty-symbol">${icon('down')}</span><h2>Пока пусто</h2><p>Найди мод, шейдер или сборку в каталоге и скачай файл.</p><button class="button light" data-page="mods">Открыть каталог ${icon('arrow')}</button></div>`}<div class="quiet-note">${icon('info')} Без выбранной сборки файлы попадают в Загрузки/AstraLauncher. С выбранной сборкой — в её игровую папку.</div>`;
 };
 
 function projectModal(index) {
   const item = liveItems[index];
   if (!item) return;
-  const profiles = state.packs.map(p => `<option value="${esc(p.version)}|${esc(p.loader.toLowerCase())}">${esc(p.name)} · ${esc(p.version)} · ${esc(p.loader)}</option>`).join('');
-  showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · ${esc(liveLabels[item.kind])}</span><h2>${esc(item.name)}</h2><p>${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><form id="live-download-form" data-index="${index}"><label>Версия файла<select name="profile"><option value="">Последний доступный релиз</option>${profiles}</select></label><button class="button light full">Скачать файл ${icon('down')}</button></form><button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button><div class="info-box">Файл сохранится в папке Загрузки/AstraLauncher. Для модов с зависимостями проверь страницу проекта: автоматическая установка зависимостей пока не подключена.</div>`);
+  const profiles = item.kind === 'modpacks' ? '' : state.packs.map(p => `<option value="${esc(p.id)}" ${item.kind==='mods'&&p.loader==='Vanilla'?'disabled':''}>${esc(p.name)} · ${esc(p.version)} · ${esc(p.loader)}</option>`).join('');
+  showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · ${esc(liveLabels[item.kind])}</span><h2>${esc(item.name)}</h2><p>${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><form id="live-download-form" data-index="${index}"><label>Куда сохранить<select name="profile"><option value="">В Загрузки/AstraLauncher</option>${profiles}</select></label><button class="button light full">Скачать / установить ${icon('down')}</button></form><button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button><div class="info-box">Выбери сборку, чтобы установить файл прямо в её папку. Для шейдеров понадобится совместимый мод, например Iris или Oculus.</div>`);
 }
 
 function configModal(kind) {
@@ -128,9 +128,10 @@ document.addEventListener('click', async event => {
   if (data.liveDetail !== undefined) projectModal(Number(data.liveDetail));
   if (data.liveConfig) configModal(data.liveConfig);
   if (data.liveMicrosoft !== undefined) startMicrosoft();
+  if (data.liveAccountMode) { state.accountMode=data.liveAccountMode; save(); render(); toast(data.liveAccountMode==='microsoft'?'Выбран Microsoft для запуска':'Выбран локальный запуск'); }
   if (data.liveAuthOpen !== undefined) window.astraDesktop.microsoftOpen().catch(error => toast(humanError(error)));
   if (data.liveClearKey !== undefined) { await window.astraDesktop.saveCurseForgeKey(''); await refreshIntegrations(); modal.close(); render(); toast('Ключ удалён'); }
-  if (data.liveDisconnect !== undefined) { await window.astraDesktop.microsoftDisconnect(); await refreshIntegrations(); render(); toast('Аккаунт отключён'); }
+  if (data.liveDisconnect !== undefined) { await window.astraDesktop.microsoftDisconnect(); state.accountMode='local'; save(); await refreshIntegrations(); render(); toast('Аккаунт отключён'); }
   if (data.liveOpen !== undefined) {
     const item = liveItems[Number(data.liveOpen)];
     if (item?.url) window.astraDesktop.openProject(item.url).catch(error => toast(humanError(error)));
@@ -162,15 +163,17 @@ document.addEventListener('submit', async event => {
     const index = Number(event.target.dataset.index);
     const item = liveItems[index];
     if (!item) return;
-    const [gameVersion, loader] = String(new FormData(event.target).get('profile') || '').split('|');
+    const profileId = String(new FormData(event.target).get('profile') || '');
+    const profile = state.packs.find(pack => pack.id === profileId);
     const button = event.target.querySelector('button');
     button.disabled = true; button.textContent = 'Скачиваем…';
     try {
-      const result = await window.astraDesktop.downloadProject({ source: item.source, kind: item.kind, id: item.id, gameVersion: gameVersion || '', loader: loader || '' });
-      state.downloads = [{ ...result, name: item.name, source: item.source }, ...(state.downloads || [])].slice(0, 100);
-      save(); modal.close(); toast(`Скачано: ${result.filename}`);
-      if (result.dependencies) showModal(`<h2>Файл скачан</h2><p>${esc(item.name)} сохранён в Загрузки/AstraLauncher.</p><div class="info-box">У этой версии ${result.dependencies} обязательных зависимостей. Перед игрой скачай их со страницы проекта.</div><button class="button light full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button>`);
-    } catch (error) { toast(humanError(error)); button.disabled = false; button.innerHTML = `Скачать файл ${icon('down')}`; }
+      const result = await window.astraDesktop.downloadProject({ source: item.source, kind: item.kind, id: item.id, gameVersion: profile?.version || '', loader: profile && profile.loader !== 'Vanilla' ? profile.loader.toLowerCase() : '', profileId: profile?.id || '' });
+      state.downloads = [{ ...result, name: item.name, source: item.source }, ...(result.installedDependencies||[]), ...(state.downloads || [])].slice(0, 100);
+      save(); modal.close(); toast(`${profile?'Установлено в сборку':'Скачано'}: ${result.filename}`);
+      if (result.missingDependencies?.length) showModal(`<h2>Мод установлен не полностью</h2><p>Не удалось загрузить обязательные зависимости.</p><div class="info-box">${esc(result.missingDependencies.join('; '))}</div><button class="button light full" data-live-open="${index}">Проверить на Modrinth ${icon('arrow')}</button>`);
+      else if (result.dependencies && item.source === 'curseforge') showModal(`<h2>Проверь зависимости</h2><p>Файл установлен, но у него ${result.dependencies} обязательных зависимостей CurseForge. Их нужно добавить отдельно.</p><button class="button light full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button>`);
+    } catch (error) { toast(humanError(error)); button.disabled = false; button.innerHTML = `Скачать / установить ${icon('down')}`; }
     return;
   }
   if (!['curseforge-form','microsoft-id-form'].includes(event.target.id)) return;

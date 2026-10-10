@@ -7,6 +7,7 @@ const microsoft = require('./microsoft.cjs');
 const download = require('./download.cjs');
 const versions = require('./versions.cjs');
 const { createInstaller } = require('./minecraft-install.cjs');
+const game = require('./game-launch.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
@@ -98,7 +99,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('microsoft:poll', () => microsoft.poll());
     guarded('microsoft:cancel', () => microsoft.cancel());
     guarded('microsoft:open', () => microsoft.openVerificationPage());
-    guarded('microsoft:disconnect', () => preferences.disconnectMicrosoft());
+    guarded('microsoft:disconnect', () => microsoft.disconnect());
     guarded('catalog:open-project', async value => {
       const url = new URL(String(value));
       if (url.protocol !== 'https:' || !['modrinth.com','www.curseforge.com'].includes(url.hostname)) throw new Error('Открывать можно только страницы Modrinth и CurseForge.');
@@ -107,6 +108,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('catalog:download', request => download.download(request));
     guarded('catalog:show-file', value => download.showFile(value));
     guarded('catalog:open-downloads', () => download.openFolder());
+    guarded('catalog:remove-installed', (file, profileId) => download.removeInstalled(file, profileId));
     guarded('versions:list', refresh => refresh === true ? versions.refresh() : versions.list());
     const installer = createInstaller({ root: path.join(app.getPath('userData'), 'minecraft'), onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('minecraft:progress', progress);
@@ -114,6 +116,13 @@ if (!app.requestSingleInstanceLock()) {
     guarded('minecraft:install', version => installer.install(version));
     guarded('minecraft:status', version => installer.status(version));
     guarded('minecraft:cancel', () => installer.cancel());
+    guarded('game:launch', profile => game.launch(profile, {
+      userData: app.getPath('userData'), minecraftRoot: path.join(app.getPath('userData'), 'minecraft'),
+      onProgress: progress => {
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', progress);
+      },
+    }));
+    guarded('game:status', () => game.status());
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());

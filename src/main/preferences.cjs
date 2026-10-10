@@ -47,6 +47,12 @@ function setMicrosoftAccount(name, refreshToken) {
   write(data);
   return status();
 }
+function getMicrosoftRefreshToken() {
+  const encrypted = read().microsoftRefreshToken;
+  if (!encrypted) return '';
+  if (!safeStorage.isEncryptionAvailable()) throw new Error('Системное шифрование недоступно. Токен не прочитан.');
+  return safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
+}
 function disconnectMicrosoft() {
   const data = read();
   delete data.microsoftAccount;
@@ -54,4 +60,4 @@ function disconnectMicrosoft() {
   write(data);
   return status();
 }
-module.exports = { status, getCurseForgeKey, setCurseForgeKey, setMicrosoftClientId, setMicrosoftAccount, disconnectMicrosoft };
+module.exports = { status, getCurseForgeKey, setCurseForgeKey, setMicrosoftClientId, setMicrosoftAccount, getMicrosoftRefreshToken, disconnectMicrosoft };

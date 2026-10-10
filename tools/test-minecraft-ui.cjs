@@ -8,6 +8,7 @@ app.setPath('userData', profile);
 let installed = false;
 let window;
 let stopCancelInstall;
+let launchedProfile;
 ipcMain.handle('versions:list', () => require('../src/main/data/minecraft-versions.json'));
 ipcMain.handle('integrations:status', () => ({ curseforgeReady: false, microsoftClientId: '', microsoftAccount: '' }));
 ipcMain.handle('minecraft:status', (_event, version) => ({ version, phase: installed && version === '1.21.1' ? 'done' : 'idle', installed: installed && version === '1.21.1' }));
@@ -28,6 +29,7 @@ ipcMain.handle('minecraft:cancel', async () => {
   window.webContents.send('minecraft:progress', { version: 'cancel-test', phase: 'cancelled' });
   return true;
 });
+ipcMain.handle('game:launch', (_event, profile) => { launchedProfile = profile; return { started: true }; });
 
 (async () => {
   try {
@@ -56,8 +58,14 @@ ipcMain.handle('minecraft:cancel', async () => {
     await new Promise(resolve => setTimeout(resolve, 80));
     const cancelled = await js("document.querySelector('.minecraft-install-status')?.textContent");
     if (!cancelled.includes('удалены')) throw new Error(`Cancellation UI failed: ${cancelled}`);
+    await js("state.profile='TestPlayer';selectedPack='ui-test';go('pack');document.querySelector('[data-launch]').click()");
+    await new Promise(resolve => setTimeout(resolve, 50));
+    if (launchedProfile?.version !== '1.21.1' || launchedProfile?.loader !== 'Vanilla' || launchedProfile?.playerName !== 'TestPlayer') throw new Error(`Launch UI sent wrong profile: ${JSON.stringify(launchedProfile)}`);
+    await js("integrationStatus.microsoftAccount='TestMC';go('accounts');document.querySelector('[data-live-account-mode=microsoft]').click();selectedPack='ui-test';go('pack');document.querySelector('[data-launch]').click()");
+    await new Promise(resolve => setTimeout(resolve, 50));
+    if (launchedProfile?.accountMode !== 'microsoft') throw new Error(`Account selection did not reach launch: ${JSON.stringify(launchedProfile)}`);
     if (errors.length) throw new Error(errors.join('\n'));
-    console.log('Minecraft install UI: ready, progress, completion, deletion warning OK');
+    console.log('Minecraft install UI: ready, progress, completion, deletion warning, launch and account selection OK');
   } catch (error) { console.error(error); process.exitCode = 1; }
   finally {
     window?.destroy();
