@@ -23,6 +23,7 @@ document.addEventListener('click',e=>{
  if(b.dataset.launch){const p=state.packs.find(p=>p.id===b.dataset.launch);if(!p)return;if(state.accountMode!=='microsoft'&&!/^[A-Za-z0-9_]{3,16}$/.test(state.profile)){accountModal();toast('Сначала укажи имя игрока латиницей.');return}window.astraDesktop.launchGame({id:p.id,name:p.name,version:p.version,loader:p.loader,loaderVersion:p.loaderVersion,memory:state.memory,playerName:state.profile,accountMode:state.accountMode==='microsoft'?'microsoft':'local',autoBackup:state.backups!==false,backupLimit:Number(state.backupLimit)||5}).then(()=>toast(`Запускаем ${p.name}…`)).catch(error=>toast(humanError(error)));return}
  const action=b.dataset.action;
  if(action==='close')modal.close();
+ if(action==='notifications')showModal(`<span class="modal-mark">${icon('bell')}</span><h2>Уведомления</h2><div class="info-box">Новых уведомлений пока нет.</div>`);
  if(action==='create')createModal();
  if(action==='account')accountModal();
  if(action==='support')showModal('<h2>Спасибо, что ты рядом ♡</h2><p>Astra начинается с идеи сделать Minecraft удобнее.</p><div class="info-box">Пожертвования пока не подключены. Сейчас лучшая поддержка — попробовать прототип и рассказать, чего тебе не хватает.</div>');

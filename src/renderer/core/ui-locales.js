@@ -2,6 +2,7 @@
 // [Russian source, English, German, French, Spanish, Korean, Japanese,
 //  Simplified Chinese, Traditional Chinese, Arabic, Norwegian Bokmål].
 const uiLocaleRows = [
+  ['Уведомления','Notifications','Benachrichtigungen','Notifications','Notificaciones','알림','通知','通知','通知','الإشعارات','Varsler'],
   ['Резервные копии миров','World backups','Welt-Sicherungen','Sauvegardes des mondes','Copias de los mundos','월드 백업','ワールドのバックアップ','世界备份','世界備份','نسخ العوالم الاحتياطية','Sikkerhetskopier av verdener'],
   ['Копии хранятся отдельно от игровых файлов этой сборки.','Backups are stored separately from this instance’s game files.','Sicherungen werden getrennt von den Spieldateien dieser Instanz gespeichert.','Les sauvegardes sont conservées séparément des fichiers de jeu de cette instance.','Las copias se guardan aparte de los archivos del juego de esta instancia.','백업은 이 인스턴스의 게임 파일과 별도로 보관됩니다.','バックアップはこのインスタンスのゲームファイルとは別に保存されます。','备份与此实例的游戏文件分开保存。','備份與此實例的遊戲檔案分開儲存。','تُحفظ النسخ الاحتياطية بعيدًا عن ملفات لعبة هذه النسخة.','Kopiene lagres separat fra spillfilene til denne instansen.'],
   ['Создать копию','Create backup','Sicherung erstellen','Créer une sauvegarde','Crear copia','백업 만들기','バックアップを作成','创建备份','建立備份','إنشاء نسخة احتياطية','Opprett sikkerhetskopi'],
@@ -177,7 +178,7 @@ const translateViewBeforeLegacy = translateView;
 translateView = function () {
   translateViewBeforeLegacy();
   if (currentLanguage() === 'ru') return;
-  for (const root of [$('#main'), $('#modal-content')]) {
+  for (const root of [$('#main'), $('#modal-content'), $('.toolbar')]) {
     if (!root) continue;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
