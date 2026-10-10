@@ -62,6 +62,11 @@ async function run() {
   const savedCover = await js('(()=>{document.querySelector("#modal").close();state.packs.push({id:"cover-smoke",name:"Cover Smoke",version:"1.20.1",loader:"Fabric",art:"forest",mods:[]});selectedPack="cover-smoke";page="pack";packTab="options";render();const select=document.querySelector("#pack-options-form select[name=art]");select.value="cherry";select.dispatchEvent(new Event("change",{bubbles:true}));const preview=document.querySelector("#pack-options-form .cover-preview svg")?.outerHTML.includes("#df93ac");document.querySelector("#pack-options-form").requestSubmit();return {preview,cover:state.packs.find(pack=>pack.id==="cover-smoke")?.art}})()');
   check(savedCover.preview && savedCover.cover === 'cherry', `Editing a cover failed: ${JSON.stringify(savedCover)}`);
   check(await js('document.querySelector(".brand>span")?.firstChild?.textContent') === 'ASTRA', 'Brand should be uppercase');
+  await js('document.querySelector("[data-page=library]").click()');
+  check(await js('!!document.querySelector("[data-action=import]")'), 'Missing modpack import action');
+  await js('document.querySelector("[data-action=import]").click()');
+  check(await js('!!document.querySelector("[data-modpack-local]")'), 'Missing local .mrpack import');
+  await js('document.querySelector("#modal").close()');
   fs.writeFileSync(path.join(__dirname, '.personalization-smoke-result.json'), JSON.stringify({ ok: true, packed, languages: languages.length, themes: 12, covers: 9, saved }));
   window.close();
 }

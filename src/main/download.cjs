@@ -15,31 +15,34 @@ function assertProject(request) {
   if (request.loader && !['fabric','forge','neoforge','quilt'].includes(request.loader)) throw new Error('Некорректный загрузчик.');
 }
 
-async function api(url, key) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.5' };
+async function api(url, key, signal) {
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.6' };
   if (key) headers['x-api-key'] = key;
-  const response = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
+  const response = await fetch(url, { headers, signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20000)]) : AbortSignal.timeout(20000) });
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
   return response.json();
 }
 
-async function resolveModrinth(request) {
+async function resolveModrinth(request, signal) {
   const url = new URL(`https://api.modrinth.com/v2/project/${request.id}/version`);
   url.searchParams.set('include_changelog', 'false');
   if (request.gameVersion) url.searchParams.set('game_versions', JSON.stringify([request.gameVersion]));
   const loader = request.kind === 'mods' || request.kind === 'modpacks' ? request.loader : request.kind === 'resources' ? 'minecraft' : '';
   if (loader) url.searchParams.set('loaders', JSON.stringify([loader]));
-  const versions = await api(url);
-  const version = versions.find(v => v.version_type === 'release' && v.files?.length) || versions.find(v => v.files?.length);
+  const versions = await api(url, undefined, signal);
+  const eligible = versions.filter(v => request.kind === 'modpacks' ? v.files?.some(f => /\.mrpack$/i.test(f.filename || '')) : v.files?.length);
+  const version = eligible.find(v => v.version_type === 'release') || eligible[0];
   if (!version) throw new Error('Для выбранной версии Minecraft и загрузчика нет файла.');
-  const file = version.files.find(f => f.primary) || version.files[0];
+  const file = request.kind === 'modpacks' ? version.files.find(f => /\.mrpack$/i.test(f.filename || '')) : version.files.find(f => f.primary) || version.files[0];
+  if (!file) throw new Error('У выбранной версии нет файла .mrpack.');
   const downloadUrl = new URL(file.url);
   if (downloadUrl.protocol !== 'https:' || downloadUrl.hostname !== 'cdn.modrinth.com') throw new Error('Неожиданный адрес файла Modrinth.');
+  if (request.kind === 'modpacks' && !/^[a-f0-9]{128}$/i.test(file.hashes?.sha512 || '')) throw new Error('У сборки отсутствует контрольная сумма SHA-512.');
   return { url: downloadUrl.href, filename: file.filename, sha512: file.hashes?.sha512, version: version.version_number, required: (version.dependencies || []).filter(d => d.dependency_type === 'required') };
 }
 
-async function fetchResolved(resolved) {
-  const response = await fetch(resolved.url, { signal: AbortSignal.timeout(120000) });
+async function fetchResolved(resolved, signal) {
+  const response = await fetch(resolved.url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120000)]) : AbortSignal.timeout(120000) });
   if (!response.ok) throw new Error(`Не удалось скачать файл: ${response.status}.`);
   if (Number(response.headers.get('content-length') || 0) > 150_000_000) throw new Error('Файл слишком большой для этой версии Astra.');
   const bytes = Buffer.from(await response.arrayBuffer());
@@ -231,4 +234,4 @@ async function openWorldsFolder(profileId) {
   return true;
 }
 
-module.exports = { download, showFile, openFolder, removeInstalled, listInstalled, openWorldsFolder, resolveModrinth };
+module.exports = { download, showFile, openFolder, removeInstalled, listInstalled, openWorldsFolder, resolveModrinth, fetchResolved };

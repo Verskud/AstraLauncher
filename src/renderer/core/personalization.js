@@ -207,7 +207,7 @@ settingsPage = function () {
     const limit = [3, 5, 10].includes(Number(state.backupLimit)) ? Number(state.backupLimit) : 5;
     content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),memoryHint,`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',javaHint,`<span class="setting-value">${automatic}</span>`)}${settingRow(t('backups'),backupHint,`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups!==false?'checked':''}><span></span></label>`)}${settingRow(retentionTitle,retentionHint,`<select id="backup-limit" aria-label="${retentionTitle}">${[3,5,10].map(count=>`<option value="${count}" ${limit===count?'selected':''}>${count}</option>`).join('')}</select>`)}`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.5</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.6</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };
@@ -217,6 +217,12 @@ discover = function () {
 };
 library = function () {
   return `<section class="page-intro"><div><div class="eyebrow">ASTRA</div><h1>${t('libraryTitle')}<span class="heading-count">${state.packs.length}</span></h1><p>${t('libraryIntro')}</p></div><button class="button light" data-action="create">+ ${t('createPack')}</button></section><div class="pack-grid">${state.packs.map(p=>`<article class="pack-card"><button class="pack-art" data-pack="${esc(p.id)}">${art(p.art,p.id)}<span class="pill">${esc(p.loader)} · ${esc(p.version)}</span></button><div class="pack-info"><button class="pack-title" data-pack="${esc(p.id)}">${esc(p.name)}</button><p>${installedRecordsForPack(p,'mods').length} ${t('mods')}</p><div><button class="button secondary" data-pack-settings="${esc(p.id)}">${t('settings')}</button><button class="button light compact" data-launch="${esc(p.id)}" aria-label="${esc(p.name)}" ${loaderAvailable(p.version,p.loader)?'':'disabled title="Select a compatible loader in settings"'}>${icon('play')}</button></div></div></article>`).join('')}<button class="new-pack" data-action="create"><span>+</span><strong>${t('newPack')}</strong><small>${t('newPackHint')}</small></button></div>`;
+};
+const libraryWithoutImport = library;
+library = function () {
+  const html = libraryWithoutImport();
+  const label = ({ ru: 'Импортировать .mrpack', en: 'Import .mrpack', de: '.mrpack importieren', fr: 'Importer .mrpack', es: 'Importar .mrpack' })[currentLanguage()] || 'Import .mrpack';
+  return html.replace('<button class="button light" data-action="create">', `<div class="row"><button class="button secondary" data-action="import">${label}</button><button class="button light" data-action="create">`).replace('</button></section><div class="pack-grid">', '</button></div></section><div class="pack-grid">');
 };
 catalogPage = function () {
   const kinds = [['mods',t('mods')],['modpacks',t('modpacks')],['shaders',t('shaders')],['resources',t('resources')]];

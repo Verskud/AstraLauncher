@@ -6,11 +6,23 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   catalogSearch: request => ipcRenderer.invoke('catalog:search', request),
   openProject: url => ipcRenderer.invoke('catalog:open-project', url),
   downloadProject: request => ipcRenderer.invoke('catalog:download', request),
+  installCatalogModpack: request => ipcRenderer.invoke('modpack:catalog-install', request),
+  importLocalModpack: () => ipcRenderer.invoke('modpack:local-import'),
+  cancelModpackInstall: () => ipcRenderer.invoke('modpack:cancel'),
+  recoverModpacks: () => ipcRenderer.invoke('modpack:recover'),
+  onModpackProgress: callback => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on('modpack:progress', listener);
+    return () => ipcRenderer.removeListener('modpack:progress', listener);
+  },
   showDownloadedFile: path => ipcRenderer.invoke('catalog:show-file', path),
   openDownloadsFolder: () => ipcRenderer.invoke('catalog:open-downloads'),
   removeInstalledFile: (file, profileId) => ipcRenderer.invoke('catalog:remove-installed', file, profileId),
   listInstalledFiles: profileId => ipcRenderer.invoke('catalog:list-installed', profileId),
   openWorldsFolder: profileId => ipcRenderer.invoke('game:open-worlds-folder', profileId),
+  openInstanceFolder: profileId => ipcRenderer.invoke('game:open-instance-folder', profileId),
+  removeInstance: profileId => ipcRenderer.invoke('game:remove-instance', profileId),
   listWorldBackups: profileId => ipcRenderer.invoke('world-backups:list', profileId),
   createWorldBackup: profileId => ipcRenderer.invoke('world-backups:create', profileId),
   restoreWorldBackup: (profileId, backupId) => ipcRenderer.invoke('world-backups:restore', profileId, backupId),

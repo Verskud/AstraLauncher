@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, session, shell, dialog } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const catalog = require('./catalog.cjs');
@@ -9,6 +9,7 @@ const versions = require('./versions.cjs');
 const { createInstaller } = require('./minecraft-install.cjs');
 const game = require('./game-launch.cjs');
 const { createWorldBackups } = require('./world-backups.cjs');
+const { createModpackInstaller } = require('./modpack.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
@@ -107,11 +108,42 @@ if (!app.requestSingleInstanceLock()) {
       await shell.openExternal(url.href);
     });
     guarded('catalog:download', request => download.download(request));
+    const modpacks = createModpackInstaller({ userData: app.getPath('userData'), onProgress: progress => {
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('modpack:progress', progress);
+    } });
+    guarded('modpack:catalog-install', async request => {
+      if (request?.source !== 'modrinth' || !/^[a-zA-Z0-9_-]{1,64}$/.test(request?.id || '')) throw new Error('Установка сборок из CurseForge пока не поддерживается.');
+      return modpacks.install(async signal => {
+        const resolved = await download.resolveModrinth({ source: 'modrinth', kind: 'modpacks', id: request.id }, signal);
+        const bytes = await download.fetchResolved(resolved, signal);
+        return { bytes, catalog: true };
+      });
+    });
+    guarded('modpack:local-import', async () => {
+      const result = await dialog.showOpenDialog(mainWindow, { title: 'Выбери сборку Modrinth', properties: ['openFile'], filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }] });
+      if (result.canceled || !result.filePaths[0]) return null;
+      return modpacks.install({ path: result.filePaths[0] });
+    });
+    guarded('modpack:cancel', () => modpacks.cancel());
+    guarded('modpack:recover', () => modpacks.recover());
     guarded('catalog:show-file', value => download.showFile(value));
     guarded('catalog:open-downloads', () => download.openFolder());
     guarded('catalog:remove-installed', (file, profileId) => download.removeInstalled(file, profileId));
     guarded('catalog:list-installed', profileId => download.listInstalled(profileId));
     guarded('game:open-worlds-folder', profileId => download.openWorldsFolder(profileId));
+    guarded('game:open-instance-folder', async profileId => {
+      const folder = require('./game-loader.cjs').instanceFolder(app.getPath('userData'), profileId);
+      await require('node:fs/promises').mkdir(folder, { recursive: true });
+      const error = await shell.openPath(folder);
+      if (error) throw new Error(error);
+      return true;
+    });
+    guarded('game:remove-instance', async profileId => {
+      const folder = require('./game-loader.cjs').instanceFolder(app.getPath('userData'), profileId);
+      if (game.status().running && game.status().profileId === profileId) throw new Error('Закрой игру перед удалением сборки.');
+      await require('node:fs/promises').rm(folder, { recursive: true, force: true });
+      return true;
+    });
     let launchPending = null;
     const worldBackups = createWorldBackups(app.getPath('userData'), profileId => launchPending === profileId || game.status().running && game.status().profileId === profileId);
     guarded('world-backups:list', profileId => worldBackups.list(profileId));

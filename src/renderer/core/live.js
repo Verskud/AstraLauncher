@@ -84,6 +84,11 @@ downloadsPage = function () {
 function projectModal(index) {
   const item = liveItems[index];
   if (!item) return;
+  if (item.kind === 'modpacks') {
+    const supported = item.source === 'modrinth';
+    showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · сборка</span><h2 class="project-name">${esc(item.name)}</h2><p class="project-description">${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><div class="info-box">${supported?'Astra создаст отдельную сборку в своей библиотеке, скачает моды и настройки из .mrpack. При первом запуске дополнительно установятся Minecraft и загрузчик.':'Импорт сборок CurseForge добавим позже. Сейчас устанавливаются сборки Modrinth и локальные .mrpack.'}</div>${supported?`<button class="button light full" data-modpack-catalog="${index}">Установить сборку ${icon('down')}</button>`:''}<button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button>`);
+    return;
+  }
   const choices = item.kind === 'modpacks' ? [] : state.packs.filter(p => item.kind !== 'mods' || p.loader !== 'Vanilla' && loaderAvailable(p.version,p.loader));
   const preferred = catalogTargetPackId ? choices.find(p => p.id === catalogTargetPackId) : choices[0];
   const target = state.packs.find(p => p.id === catalogTargetPackId);
@@ -92,6 +97,50 @@ function projectModal(index) {
   const profiles = choices.map(p => `<option value="${esc(p.id)}" ${p.id===preferred?.id?'selected':''}>${esc(p.name)} · ${esc(p.version)} · ${esc(p.loader)}</option>`).join('');
   showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · ${esc(liveLabels[item.kind])}</span><h2 class="project-name">${esc(item.name)}</h2><p class="project-description">${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><form id="live-download-form" data-index="${index}"><label>Куда сохранить<select name="profile" required>${invalidTarget?'<option value="" selected disabled>Выбери совместимую сборку или Загрузки</option>':''}${profiles}<option value="downloads" ${!preferred&&!invalidTarget?'selected':''}>В Загрузки/AstraLauncher (без установки)</option></select></label><button class="button light full">Скачать / установить ${icon('down')}</button></form><button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button><div class="info-box">${targetWarning}${preferred?'Выбрана сборка: '+esc(preferred.name)+'. Файл будет установлен в её игровую папку.':'Создай совместимую сборку, чтобы установить файл сразу в игру.'} Для шейдеров понадобится совместимый мод, например Iris или Oculus.</div>`);
 }
+
+let modpackPending = false;
+function modpackCancelPrompt() {
+  showModal('<h2>Отменить установку?</h2><p>Все файлы этой незавершённой сборки будут удалены.</p><button class="button destructive full" data-modpack-confirm-cancel>Отменить и удалить файлы</button>');
+}
+function modpackProgressView(progress) {
+  if (!modpackPending) return;
+  const status = $('#modpack-status');
+  if (!status) return;
+  const total = Math.max(0, Number(progress.total || 0));
+  const done = Math.max(0, Number(progress.completed || 0));
+  status.textContent = `${done} из ${total} файлов · ${progress.message || 'Устанавливаем…'}`;
+  const bar = $('#modpack-progress-bar');
+  if (bar) bar.style.width = `${total ? Math.round(done / total * 100) : 0}%`;
+}
+window.astraDesktop.onModpackProgress(modpackProgressView);
+async function installModpack(run) {
+  if (modpackPending) return;
+  modpackPending = true;
+  showModal(`<h2>Установка сборки</h2><p id="modpack-status">Готовим загрузку…</p><div class="progress-track"><span id="modpack-progress-bar" style="width:0%"></span></div><p class="quiet-note">Файлы проверяются перед добавлением в библиотеку. При ошибке неполная сборка удаляется.</p><button class="button secondary full" data-modpack-cancel>Отменить установку</button>`);
+  $('#modal .modal-close')?.remove();
+  try {
+    const result = await run();
+    if (!result) { modal.close(); return; }
+    const profile = result.profile;
+    if (!state.packs.some(item => item.id === profile.id)) state.packs.push(profile);
+    save();
+    await refreshInstalled(profile.id);
+    selectedPack = profile.id;
+    packTab = 'mods';
+    modal.close();
+    go('pack');
+    toast(`Сборка «${profile.name}» установлена: ${result.files} файлов и ${result.overrides} настроек`);
+  } catch (error) {
+    showModal(`<h2>Не удалось установить сборку</h2><p>${esc(humanError(error))}</p><div class="info-box">Неполная сборка удалена. Повтори попытку или выбери другой файл.</div><button class="button light full" data-action="close">Закрыть</button>`);
+  } finally { modpackPending = false; }
+}
+modal.addEventListener('cancel', event => { if (modpackPending) { event.preventDefault(); modpackCancelPrompt(); } });
+modal.addEventListener('click', event => { if (modpackPending && event.target === modal) { event.preventDefault(); event.stopImmediatePropagation(); modpackCancelPrompt(); } }, true);
+window.astraDesktop.recoverModpacks().then(profiles => {
+  let added = false;
+  for (const profile of profiles) if (!state.packs.some(item => item.id === profile.id)) { state.packs.push(profile); added = true; }
+  if (added) { save(); render(); }
+}).catch(() => {});
 
 function configModal(kind) {
   if (kind === 'curseforge') showModal(`<h2>CurseForge API</h2><p>Укажи ключ приложения CurseForge. Он сохранится зашифрованным локально и не попадёт в интерфейс.</p><form id="curseforge-form"><label>API ключ<input name="key" type="password" autocomplete="off" placeholder="Вставь ключ" ${integrationStatus.curseforgeReady?'':'required'}></label><button class="button light full">Сохранить</button></form>${integrationStatus.curseforgeReady?'<button class="text-button" data-live-clear-key>Удалить ключ</button>':''}`);
@@ -124,6 +173,14 @@ document.addEventListener('click', async event => {
   if (data.liveRefresh !== undefined) searchLive();
   if (data.liveMore !== undefined) searchLive(true);
   if (data.liveDetail !== undefined) projectModal(Number(data.liveDetail));
+  if (data.openInstanceFolder !== undefined) window.astraDesktop.openInstanceFolder(data.openInstanceFolder).catch(error => toast(humanError(error)));
+  if (data.modpackCatalog !== undefined) {
+    const item = liveItems[Number(data.modpackCatalog)];
+    if (item?.source === 'modrinth' && item.kind === 'modpacks') installModpack(() => window.astraDesktop.installCatalogModpack({ source: 'modrinth', id: item.id }));
+  }
+  if (data.modpackLocal !== undefined) installModpack(() => window.astraDesktop.importLocalModpack());
+  if (data.modpackCancel !== undefined) modpackCancelPrompt();
+  if (data.modpackConfirmCancel !== undefined) window.astraDesktop.cancelModpackInstall().catch(error => toast(humanError(error)));
   if (data.liveConfig) configModal(data.liveConfig);
   if (data.liveMicrosoft !== undefined) startMicrosoft();
   if (data.liveAccountMode) { state.accountMode=data.liveAccountMode; save(); render(); toast(data.liveAccountMode==='microsoft'?'Выбран Microsoft для запуска':'Выбран локальный запуск'); }

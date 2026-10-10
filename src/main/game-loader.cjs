@@ -12,12 +12,14 @@ function validateProfile(profile) {
   return profile;
 }
 function supportsNeoForge(version) {
+  if (/^\d{2}\.\d+(?:\.\d+)?$/.test(version)) return Number(version.split('.')[0]) >= 26;
   const match = /^1\.(\d+)(?:\.(\d+))?$/.exec(version);
   return !!match && (Number(match[1]) > 20 || Number(match[1]) === 20 && Number(match[2] || 0) >= 2);
 }
 function loaderAvailable(version, loader) {
   if (loader === 'NeoForge') return supportsNeoForge(version);
   if (loader === 'Fabric' || loader === 'Quilt') {
+    if (/^\d{2}\.\d+(?:\.\d+)?$/.test(version)) return Number(version.split('.')[0]) >= 26;
     const match = /^1\.(\d+)(?:\.(\d+))?$/.exec(version);
     return !!match && Number(match[1]) >= 14;
   }
@@ -33,7 +35,8 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
   validateProfile(profile);
   root = path.resolve(root);
   if (profile.loader === 'Vanilla') return null;
-  const folder = path.join(root, 'loaders', profile.loader.toLowerCase(), profile.version);
+  const pinned = typeof profile.loaderVersion === 'string' && /^[A-Za-z0-9._+-]{1,80}$/.test(profile.loaderVersion) ? profile.loaderVersion : '';
+  const folder = path.join(root, 'loaders', profile.loader.toLowerCase(), pinned ? `${profile.version}--${pinned}` : profile.version);
   const saved = path.join(folder, 'profile.json');
   try { return JSON.parse(await fs.readFile(saved, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
   onProgress({ phase: 'loader', message: `Устанавливаем ${profile.loader}…` });
@@ -41,7 +44,7 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
   if (profile.loader === 'Fabric' || profile.loader === 'Quilt') {
     const base = profile.loader === 'Fabric' ? 'https://meta.fabricmc.net/v2' : 'https://meta.quiltmc.org/v3';
     const versions = await getJson(`${base}/versions/loader/${encodeURIComponent(profile.version)}`);
-    const stable = versions.find(item => item.loader?.stable) || versions[0];
+    const stable = pinned ? versions.find(item => item.loader?.version === pinned) : versions.find(item => item.loader?.stable) || versions[0];
     if (!stable?.loader?.version) throw new Error(`${profile.loader} не поддерживает Minecraft ${profile.version}.`);
     metadata = await getJson(`${base}/versions/loader/${encodeURIComponent(profile.version)}/${encodeURIComponent(stable.loader.version)}/profile/json`);
     if (!metadata.mainClass || !Array.isArray(metadata.libraries)) throw new Error('Некорректный профиль загрузчика.');
@@ -59,7 +62,7 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
     const xml = await getJsonText(`${base}maven-metadata.xml`);
     const candidates = [...xml.matchAll(/<version>([^<]+)<\/version>/g)].map(match => match[1]);
     const matches = candidates.filter(version => neoforge ? version.startsWith(profile.version.replace(/^1\./, '') + '.') : version.startsWith(`${profile.version}-`));
-    const selected = matches.at(-1);
+    const selected = pinned ? matches.find(version => version === (neoforge ? pinned : `${profile.version}-${pinned}`)) : matches.at(-1);
     if (!selected) throw new Error(`${profile.loader} не поддерживает Minecraft ${profile.version}.`);
     const artifact = neoforge ? 'neoforge' : 'forge';
     const jarName = `${artifact}-${selected}-installer.jar`;
