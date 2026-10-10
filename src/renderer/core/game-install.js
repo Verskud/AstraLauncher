@@ -21,6 +21,10 @@ function updateMinecraftPanel(progress) {
   cancel.hidden = !['metadata', 'downloading'].includes(progress.phase);
   track.hidden = progress.phase !== 'downloading';
   track.firstElementChild.style.width = `${percent}%`;
+  if (typeof translateLegacyText === 'function') {
+    status.textContent = translateLegacyText(status.textContent);
+    button.textContent = translateLegacyText(button.textContent);
+  }
 }
 
 const renderBeforeMinecraft = render;

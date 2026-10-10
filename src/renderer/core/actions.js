@@ -26,7 +26,7 @@ document.addEventListener('click',e=>{
  if(action==='create')createModal();
  if(action==='settings')go('settings');
  if(action==='account')accountModal();
- if(action==='notifications')showModal('<h2>Всё спокойно</h2><p>Здесь будут обновления сборок и важные новости.</p><div class="info-box">Сейчас у тебя актуальная версия макета Astra 0.2.</div>');
+ if(action==='notifications')showModal('<h2>Всё спокойно</h2><p>Здесь будут обновления сборок и важные новости.</p><div class="info-box">Новых уведомлений пока нет.</div>');
  if(action==='support')showModal('<h2>Спасибо, что ты рядом ♡</h2><p>Astra начинается с идеи сделать Minecraft удобнее.</p><div class="info-box">Пожертвования пока не подключены. Сейчас лучшая поддержка — попробовать прототип и рассказать, чего тебе не хватает.</div>');
  if(action==='starter')showModal(`<h2>Astra Essentials</h2><p>Базовая подборка для красивой и плавной игры.</p><div class="detail-tags"><span>Fabric</span><span>1.21.1</span><span>3 мода</span></div><div class="starter-list">${['sodium','iris','lithium'].map(id=>{const m=mods.find(m=>m.id===id);return `<div><span class="mod-icon" style="--mod-color:${m.color}">${m.letter}</span><span><strong>${m.name}</strong><small>${m.category}</small></span>${icon('check')}</div>`}).join('')}</div><button class="button light full" data-action="install-starter">Добавить в мои сборки ${icon('arrow')}</button>`);
  if(action==='install-starter'){let p=state.packs.find(p=>p.id==='essentials');if(!p){p={id:'essentials',name:'Astra Essentials',version:'1.21.1',loader:'Fabric',art:'forest',mods:['sodium','iris','lithium'],last:'Готова к настройке'};state.packs.push(p);save()}selectedPack=p.id;modal.close();go('pack');toast('Astra Essentials в твоей библиотеке')}

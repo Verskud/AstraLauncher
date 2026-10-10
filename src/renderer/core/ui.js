@@ -17,7 +17,7 @@ const icons = {
 };
 const icon=(name)=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.cube}</svg>`;
 const esc=(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(text){$('#toast').textContent=text;$('#toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('show'),3600)}
+function toast(text){$('#toast').textContent=typeof translateLegacyText==='function'?translateLegacyText(text):text;$('#toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('show'),3600)}
 const coverTemplates = [
  ['forest','Тихий лес'],['desert','Тёплая долина'],['night','Сумерки'],
  ['snow','Снежные вершины'],['cherry','Цветущая роща'],['canyon','Красный каньон'],

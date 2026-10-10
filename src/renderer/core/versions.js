@@ -43,7 +43,8 @@ function updateLoaderForVersion() {
   const version = document.querySelector('#version-choice')?.value || '';
   for (const option of loader.options) if (option.value !== 'Vanilla') option.disabled = !release || !loaderAvailable(version, option.value);
   if (loader.selectedOptions[0]?.disabled) loader.value = 'Vanilla';
-  note.textContent = release ? version === '1.12.2' ? 'Для Minecraft 1.12.2 используй Forge или Vanilla. Fabric, Quilt и NeoForge эту версию не поддерживают.' : vLabel(12) : vLabel(11);
+  note.textContent = release ? version === '1.12.2' ? 'Для Minecraft 1.12.2 используй Forge или Vanilla. Fabric, Quilt и NeoForge эту версию не поддерживают.' : 'Выбранный загрузчик будет установлен при первом запуске сборки.' : vLabel(11);
+  if (typeof translateLegacyText === 'function') note.textContent = translateLegacyText(note.textContent);
 }
 
 function renderVersionChoices(preferred) {
