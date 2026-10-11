@@ -3,6 +3,14 @@ const { contextBridge, ipcRenderer } = require('electron');
 // A narrow API: the interface cannot access Node.js, files or arbitrary IPC.
 contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   setWindowTheme: theme => ipcRenderer.send('window:theme', theme),
+  validateServer: address => ipcRenderer.invoke('servers:validate',address),
+  serverStatus: address => ipcRenderer.invoke('servers:status',address),
+  playerSkinStatus: () => ipcRenderer.invoke('skins:status'),
+  playerSkinPreview: name => ipcRenderer.invoke('skins:preview',name),
+  playerSkinSource: (source,model) => ipcRenderer.invoke('skins:source',source,model),
+  selectPlayerTexture: kind => ipcRenderer.invoke('skins:select',kind),
+  removePlayerTexture: kind => ipcRenderer.invoke('skins:remove',kind),
+  installPlayerSkins: (profile,name) => ipcRenderer.invoke('skins:install',profile,name),
   customFontStatus: () => ipcRenderer.invoke('appearance:font-status'),
   selectCustomFont: () => ipcRenderer.invoke('appearance:font-select'),
   resetCustomFont: () => ipcRenderer.invoke('appearance:font-reset'),

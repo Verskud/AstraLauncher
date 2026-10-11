@@ -14,6 +14,8 @@ const game = require('./game-launch.cjs');
 const { createWorldBackups } = require('./world-backups.cjs');
 const { createModpackInstaller } = require('./modpack.cjs');
 const customFont = require('./custom-font.cjs');
+const { createServerMonitor, parseAddress } = require('./server-status.cjs');
+const { createPlayerSkins } = require('./player-skins.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
@@ -120,6 +122,27 @@ if (!app.requestSingleInstanceLock()) {
       throw new Error('Неизвестный источник каталога.');
     });
     guarded('integrations:status', () => preferences.status());
+    const checkServer = createServerMonitor();
+    let skinInstallPending = false;
+    const skins = createPlayerSkins(app.getPath('userData'), { download: request => download.download(request), decodePng: bytes => !require('electron').nativeImage.createFromBuffer(bytes).isEmpty() });
+    guarded('servers:validate', value => parseAddress(value));
+    guarded('servers:status', value => checkServer(value));
+    guarded('skins:status', () => skins.status());
+    guarded('skins:preview', name => skins.remote(name));
+    guarded('skins:source', (source,model) => skins.setSource(source,model));
+    guarded('skins:remove', kind => skins.removeTexture(kind));
+    guarded('skins:select', async kind => {
+      if (!['skin','cape'].includes(kind)) throw new Error('Некорректный тип текстуры.');
+      const result = await dialog.showOpenDialog(mainWindow, { title: kind === 'skin' ? 'Скин игрока' : 'Плащ игрока', properties:['openFile'], filters:[{name:'PNG',extensions:['png']}] });
+      return result.canceled || !result.filePaths[0] ? null : skins.importTexture(result.filePaths[0],kind);
+    });
+    guarded('skins:install', async (profile,name) => {
+      if (skinInstallPending) throw new Error('Поддержка скинов уже устанавливается.');
+      if (launchPending || game.status().running) throw new Error('Закрой игру перед изменением скинов сборки.');
+      skinInstallPending = true;
+      try { return await skins.install(profile,name); }
+      finally { skinInstallPending = false; }
+    });
     guarded('integrations:curseforge', key => preferences.setCurseForgeKey(key));
     guarded('integrations:microsoft-id', id => preferences.setMicrosoftClientId(id));
     guarded('appearance:font-status', () => customFont.status(app.getPath('userData')));
@@ -197,6 +220,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('minecraft:status', version => installer.status(version));
     guarded('minecraft:cancel', () => installer.cancel());
     guarded('game:launch', async profile => {
+      if (skinInstallPending) throw new Error('Дождись установки поддержки скинов.');
       if (launchPending || game.status().running) throw new Error('Игра уже запускается или запущена.');
       if (profile?.autoBackup === true) {
         if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', { phase: 'backup', message: 'Создаём резервную копию миров…' });
@@ -204,6 +228,7 @@ if (!app.requestSingleInstanceLock()) {
       }
       launchPending = profile.id;
       try {
+        await skins.prepare(profile, profile.accountMode === 'microsoft' ? preferences.status().microsoftAccount : profile.playerName || 'Player');
         return await game.launch(profile, {
           userData: app.getPath('userData'), minecraftRoot: path.join(app.getPath('userData'), 'minecraft'),
           onProgress: progress => {

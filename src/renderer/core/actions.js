@@ -1,7 +1,7 @@
 function render(){
   applyAppearance();
   renderNavigation();
-  const views={discover,library,mods:catalogPage,pack:packPage,settings:settingsPage,downloads:downloadsPage,accounts:accountsPage};
+  const views={discover,library,mods:catalogPage,pack:packPage,settings:settingsPage,downloads:downloadsPage,accounts:accountsPage,servers:typeof serversPage==='function'?serversPage:discover};
   $('#main').innerHTML=(views[page]||discover)();
   if(page==='mods' && catalogType==='mods')results();
 }

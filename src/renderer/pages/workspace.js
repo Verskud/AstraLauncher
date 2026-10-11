@@ -32,7 +32,7 @@ function tabs(items, active, attribute) {
 function renderNavigation() {
   const nav = [
     ['discover','compass','Открывай'],['library','grid','Мои сборки'],['mods','cube','Каталог'],
-    ['downloads','down','Загрузки'],['accounts','user','Аккаунты'],['settings','settings','Настройки']
+    ['downloads','down','Загрузки'],['servers','server',typeof networkText==='function'?networkText('servers'):'Серверы'],['accounts','user','Аккаунты'],['settings','settings','Настройки']
   ];
   $('#navigation').innerHTML=nav.map(([id,symbol,title])=>`<button class="nav-item ${page===id || (id==='library' && page==='pack')?'active':''}" data-page="${id}" aria-label="${title}" title="${title}">${icon(symbol)}<span>${title}</span>${id==='library'?`<span class="count">${state.packs.length}</span>`:''}</button>`).join('');
   $('#side-packs').innerHTML=state.packs.slice(0,4).map(p=>`<button class="side-pack ${selectedPack===p.id&&page==='pack'?'selected':''}" data-pack="${esc(p.id)}"><span class="pack-mini ${p.art}">${icon('cube')}</span><span>${esc(p.name)}</span></button>`).join('');
@@ -196,7 +196,7 @@ function restoreRoute(){
   const initial=location.hash.slice(1);
   page=['discover','library','mods'].includes(state.startPage)?state.startPage:'discover';
   if(initial.startsWith('pack/')){try{selectedPack=decodeURIComponent(initial.slice(5));if(state.packs.some(p=>p.id===selectedPack))page='pack';}catch{}}
-  if(['discover','library','mods','settings','downloads','accounts'].includes(initial))page=initial;
+  if(['discover','library','mods','settings','downloads','accounts','servers'].includes(initial))page=initial;
   render();
 }
 window.addEventListener('hashchange',restoreRoute);

@@ -32,7 +32,7 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.14' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.15' };
   if (key) headers['x-api-key'] = key;
   return withDownloadResponse(url, { headers, signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
