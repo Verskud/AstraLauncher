@@ -54,7 +54,7 @@ function checkedUrl(value, first) {
 async function fetchFile(url, expectedSize, signal) {
   let address = checkedUrl(url, true);
   for (let redirect = 0; redirect <= 5; redirect++) {
-    const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.13' } }, async (response, touch) => {
+    const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.14' } }, async (response, touch) => {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       await response.body?.cancel();
       if (redirect === 5) throw new Error('Слишком много перенаправлений при загрузке.');

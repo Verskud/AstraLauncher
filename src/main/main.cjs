@@ -1,6 +1,6 @@
 const { protectProcessOutput, routeConsoleToFile } = require('./process-output.cjs');
 protectProcessOutput();
-const { app, BrowserWindow, Menu, ipcMain, session, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, session, shell, dialog, protocol } = require('electron');
 const path = require('node:path');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
@@ -13,6 +13,7 @@ const { createInstaller } = require('./minecraft-install.cjs');
 const game = require('./game-launch.cjs');
 const { createWorldBackups } = require('./world-backups.cjs');
 const { createModpackInstaller } = require('./modpack.cjs');
+const customFont = require('./custom-font.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
@@ -21,6 +22,8 @@ const supportsGlass = process.platform === 'win32' && Number(os.release().split(
 const entryUrl = pathToFileURL(entry).href;
 let mainWindow = null;
 let windowTheme = null;
+
+protocol.registerSchemesAsPrivileged([{ scheme: 'astra-font', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 
 app.setName('AstraLauncher');
 app.setAppUserModelId(APP_ID);
@@ -86,6 +89,14 @@ if (!app.requestSingleInstanceLock()) {
     Menu.setApplicationMenu(null);
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
+    protocol.handle('astra-font', async request => {
+      const url = new URL(request.url);
+      if (url.hostname !== 'current') return new Response(null, { status: 404 });
+      const current = await customFont.status(app.getPath('userData'));
+      if (!current.active) return new Response(null, { status: 404 });
+      const bytes = await require('node:fs/promises').readFile(current.filename);
+      return new Response(bytes, { headers: { 'Content-Type': current.mime, 'Cache-Control': 'no-store' } });
+    });
     ipcMain.on('window:theme', (event, theme) => {
       if (trustedSender(event) && (Object.hasOwn(TITLE_COLORS, theme) || theme === 'glass') && windowTheme !== theme) {
         windowTheme = theme;
@@ -111,6 +122,13 @@ if (!app.requestSingleInstanceLock()) {
     guarded('integrations:status', () => preferences.status());
     guarded('integrations:curseforge', key => preferences.setCurseForgeKey(key));
     guarded('integrations:microsoft-id', id => preferences.setMicrosoftClientId(id));
+    guarded('appearance:font-status', () => customFont.status(app.getPath('userData')));
+    guarded('appearance:font-select', async () => {
+      const result = await dialog.showOpenDialog(mainWindow, { title: 'Выбери шрифт интерфейса', properties: ['openFile'], filters: [{ name: 'Шрифты', extensions: ['ttf', 'otf', 'woff', 'woff2'] }] });
+      if (result.canceled || !result.filePaths[0]) return null;
+      return customFont.install(app.getPath('userData'), result.filePaths[0]);
+    });
+    guarded('appearance:font-reset', () => customFont.reset(app.getPath('userData')));
     guarded('microsoft:start', () => microsoft.start());
     guarded('microsoft:poll', () => microsoft.poll());
     guarded('microsoft:cancel', () => microsoft.cancel());

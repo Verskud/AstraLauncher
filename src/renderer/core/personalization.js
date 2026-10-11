@@ -206,6 +206,33 @@ const connectionNoteCopy = {
   'de-CH': 'Schlüssel und Tokens werden geschützt unter Windows gespeichert. Für offizielle Server brauchst du ein Microsoft-Konto mit Minecraft Java Edition.',
   nb: 'Nøkler og tokener lagres i beskyttet Windows-lagring. Offisielle servere krever en Microsoft-konto som eier Minecraft Java Edition.',
 };
+const customFontCopy = {
+  ru: ['Шрифт интерфейса', 'Установи свой TTF, OTF, WOFF или WOFF2. Файл хранится только на этом компьютере.', 'Выбрать шрифт', 'Заменить', 'Вернуть Manrope'],
+  en: ['Interface font', 'Use your own TTF, OTF, WOFF or WOFF2. The file stays on this computer.', 'Choose font', 'Replace', 'Restore Manrope'],
+  de: ['Oberflächenschrift', 'Nutze eine eigene TTF-, OTF-, WOFF- oder WOFF2-Datei. Sie bleibt auf diesem Computer.', 'Schrift wählen', 'Ersetzen', 'Manrope wiederherstellen'],
+  fr: ['Police de l’interface', 'Utilisez votre fichier TTF, OTF, WOFF ou WOFF2. Il reste sur cet ordinateur.', 'Choisir une police', 'Remplacer', 'Rétablir Manrope'],
+  es: ['Fuente de la interfaz', 'Usa tu propio archivo TTF, OTF, WOFF o WOFF2. Se guarda solo en este equipo.', 'Elegir fuente', 'Cambiar', 'Restaurar Manrope'],
+  ko: ['인터페이스 글꼴', 'TTF, OTF, WOFF 또는 WOFF2 글꼴을 사용할 수 있습니다. 파일은 이 컴퓨터에만 저장됩니다.', '글꼴 선택', '교체', 'Manrope 복원'],
+  ja: ['インターフェースのフォント', 'TTF、OTF、WOFF、WOFF2 を使用できます。ファイルはこのパソコン内だけに保存されます。', 'フォントを選択', '変更', 'Manrope に戻す'],
+  'zh-CN': ['界面字体', '可使用自己的 TTF、OTF、WOFF 或 WOFF2 文件。文件仅保存在此电脑。', '选择字体', '更换', '恢复 Manrope'],
+  'zh-TW': ['介面字型', '可使用自己的 TTF、OTF、WOFF 或 WOFF2 檔案。檔案只會儲存在這台電腦。', '選擇字型', '更換', '恢復 Manrope'],
+  ar: ['خط الواجهة', 'استخدم ملف TTF أو OTF أو WOFF أو WOFF2. يبقى الملف على هذا الكمبيوتر فقط.', 'اختيار خط', 'استبدال', 'استعادة Manrope'],
+  'de-CH': ['Oberflächenschrift', 'Nutze eine eigene TTF-, OTF-, WOFF- oder WOFF2-Datei. Sie bleibt auf diesem Computer.', 'Schrift wählen', 'Ersetzen', 'Manrope wiederherstellen'],
+  nb: ['Skrift i grensesnittet', 'Bruk en egen TTF-, OTF-, WOFF- eller WOFF2-fil. Filen lagres bare på denne datamaskinen.', 'Velg skrift', 'Bytt', 'Gjenopprett Manrope'],
+};
+let customFontInfo = { active: false, name: '' };
+let loadedCustomFont = null;
+async function applyCustomFont(info) {
+  if (loadedCustomFont) { document.fonts.delete(loadedCustomFont); loadedCustomFont = null; }
+  customFontInfo = info?.active ? info : { active: false, name: '' };
+  document.documentElement.style.fontFamily = '';
+  if (!customFontInfo.active) return;
+  const face = new FontFace('Astra Custom', `url("astra-font://current/font?v=${encodeURIComponent(customFontInfo.revision)}")`);
+  await face.load();
+  document.fonts.add(face);
+  loadedCustomFont = face;
+  document.documentElement.style.fontFamily = '"Astra Custom", Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+}
 settingsPage = function () {
   const navigation = tabs([['general',t('general')],['appearance',t('appearance')],['game',t('game')],['about',t('about')]], settingsTab, 'data-settings-tab');
   const heading = `<section class="page-intro"><div><div class="eyebrow">ASTRA</div><h1>${t('settings')}</h1><p>${t('settingsIntro')}</p></div><span class="autosave">${icon('check')} ${t('autoSave')}</span></section>`;
@@ -219,13 +246,16 @@ settingsPage = function () {
     content = `<h2>${t('yourAstra')}</h2><p class="appearance-hint">${t('chooseTheme')}</p><div class="appearance-choices expanded">${Object.entries(palettes).map(([id,palette])=>`<button class="theme-card ${state.theme===id?'selected':''}" data-theme="${id}" aria-pressed="${state.theme===id}"><span class="theme-mini palette-mini" style="--preview-bg:${palette.bg};--preview-side:${palette.sidebar};--preview-panel:${palette.panel};--preview-accent:${palette.accent}"><i></i><b></b><em></em></span><span>${themeName(id)} ${state.theme===id?icon('check'):''}</span></button>`).join('')}</div>${settingRow(t('accent'),t('accentHint'),`<div class="segmented"><button data-accent="purple" class="${state.accent!=='mono'?'selected':''}">${t('purple')}</button><button data-accent="mono" class="${state.accent==='mono'?'selected':''}">${t('mono')}</button></div>`)}${settingRow(t('compact'),t('compactHint'),`<label class="switch"><input aria-label="${t('compact')}" type="checkbox" id="compact-ui" ${state.compact?'checked':''}><span></span></label>`)}`;
     const [,animationTitle,animationHint] = appearanceOptionsCopy[currentLanguage()] || appearanceOptionsCopy.en;
     content = settingRow(animationTitle,animationHint,`<label class="switch"><input aria-label="${animationTitle}" type="checkbox" id="interface-animations" ${state.animations!==false?'checked':''}><span></span></label>`) + content;
+    const [fontTitle,fontHint,chooseFont,replaceFont,resetFont] = customFontCopy[currentLanguage()] || customFontCopy.en;
+    const fontControl = `<div class="font-actions">${customFontInfo.active?`<span class="setting-value custom-font-name" title="${esc(customFontInfo.name)}">${esc(customFontInfo.name)}</span>`:''}<button class="button secondary" data-custom-font-select>${customFontInfo.active?replaceFont:chooseFont}</button>${customFontInfo.active?`<button class="text-button" data-custom-font-reset>${resetFont}</button>`:''}</div>`;
+    content += settingRow(fontTitle,fontHint,fontControl);
   } else if (settingsTab === 'game') {
     const [memoryHint, javaHint, automatic] = runtimeCopy[currentLanguage()] || runtimeCopy.ru;
     const [backupHint, retentionTitle, retentionHint] = backupSettingsCopy[currentLanguage()] || backupSettingsCopy.ru;
     const limit = [3, 5, 10].includes(Number(state.backupLimit)) ? Number(state.backupLimit) : 5;
     content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),memoryHint,`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',javaHint,`<span class="setting-value">${automatic}</span>`)}${settingRow(t('backups'),backupHint,`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups!==false?'checked':''}><span></span></label>`)}${settingRow(retentionTitle,retentionHint,`<select id="backup-limit" aria-label="${retentionTitle}">${[3,5,10].map(count=>`<option value="${count}" ${limit===count?'selected':''}>${count}</option>`).join('')}</select>`)}`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.13</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.14</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };
@@ -337,7 +367,20 @@ document.addEventListener('change', event => {
   save();
   render();
 });
+document.addEventListener('click', async event => {
+  const select = event.target.closest('[data-custom-font-select]');
+  const reset = event.target.closest('[data-custom-font-reset]');
+  if (!select && !reset) return;
+  const button = select || reset;
+  button.disabled = true;
+  try {
+    const result = select ? await window.astraDesktop.selectCustomFont() : await window.astraDesktop.resetCustomFont();
+    if (result) { await applyCustomFont(result); render(); }
+  } catch (error) { toast(humanError(error)); }
+  finally { if (button.isConnected) button.disabled = false; }
+});
 document.addEventListener('input', event => {
   if (event.target.id === 'memory' && $('#memory-value')) $('#memory-value').textContent = `${state.memory} GB`;
 });
 render();
+window.astraDesktop?.customFontStatus?.().then(applyCustomFont).then(() => { if (page === 'settings' && settingsTab === 'appearance') render(); }).catch(error => console.warn('Custom font could not be loaded:', error));

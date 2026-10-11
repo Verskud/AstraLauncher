@@ -49,3 +49,4 @@ dialog::backdrop{animation:backdrop-in .2s ease-out}
 .reduce-motion *,.reduce-motion *:before,.reduce-motion *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 .reduce-motion .pack-card:hover,.reduce-motion .collection-card:hover,.reduce-motion .mod-card:hover,.reduce-motion .theme-card:hover,.reduce-motion .home-actions>button:hover,.reduce-motion .button:hover,.reduce-motion .cover-option:hover{transform:none}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.font-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.custom-font-name{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

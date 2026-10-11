@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 // A narrow API: the interface cannot access Node.js, files or arbitrary IPC.
 contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   setWindowTheme: theme => ipcRenderer.send('window:theme', theme),
+  customFontStatus: () => ipcRenderer.invoke('appearance:font-status'),
+  selectCustomFont: () => ipcRenderer.invoke('appearance:font-select'),
+  resetCustomFont: () => ipcRenderer.invoke('appearance:font-reset'),
   catalogSearch: request => ipcRenderer.invoke('catalog:search', request),
   openProject: url => ipcRenderer.invoke('catalog:open-project', url),
   downloadProject: request => ipcRenderer.invoke('catalog:download', request),
