@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // A narrow API: the interface cannot access Node.js, files or arbitrary IPC.
 contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   setWindowTheme: theme => ipcRenderer.send('window:theme', theme),
+  openGameLog: id => ipcRenderer.invoke('game:open-log', id),
   toggleInstanceMod: (id,name) => ipcRenderer.invoke('instances:toggle-mod',id,name),
   cloneInstance: (profile,name,worlds) => ipcRenderer.invoke('instances:clone',profile,name,worlds),
   checkModUpdates: profile => ipcRenderer.invoke('instances:updates',profile),

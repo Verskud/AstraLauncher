@@ -278,6 +278,13 @@ if (!app.requestSingleInstanceLock()) {
       } finally { launchPending = null; }
     });
     guarded('game:status', () => game.status());
+    guarded('game:open-log', async id => {
+      const filename = path.join(require('./game-loader.cjs').instanceFolder(app.getPath('userData'), id), 'astra-launch.log');
+      const stat = await require('node:fs/promises').lstat(filename);
+      if (!stat.isFile()) throw new Error('Некорректный журнал игры.');
+      const error = await shell.openPath(filename);
+      if (error) throw new Error(error);
+    });
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());

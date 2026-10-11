@@ -34,7 +34,7 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.19' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.20' };
   if (key) headers['x-api-key'] = key;
   return withDownloadResponse(url, { headers, signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
@@ -48,8 +48,10 @@ async function resolveModrinth(request, signal) {
   if (request.gameVersion) url.searchParams.set('game_versions', JSON.stringify([request.gameVersion]));
   const loader = request.kind === 'mods' || request.kind === 'modpacks' ? request.loader : request.kind === 'resources' ? 'minecraft' : '';
   if (loader) url.searchParams.set('loaders', JSON.stringify([loader]));
-  const versions = await api(url, undefined, signal);
-  const eligible = versions.filter(v => request.kind === 'modpacks' ? v.files?.some(f => /\.mrpack$/i.test(f.filename || '')) : v.files?.length);
+  if (request.versionId && !/^[A-Za-z0-9_-]{1,64}$/.test(request.versionId)) throw new Error('Некорректный ID версии проекта.');
+  const versions = request.versionId ? [await api(`https://api.modrinth.com/v2/version/${request.versionId}`, undefined, signal)] : await api(url, undefined, signal);
+  if (request.versionId && versions[0].project_id !== request.id) throw new Error('Версия принадлежит другому проекту.');
+  const eligible = versions.filter(v => (!request.gameVersion || v.game_versions?.includes(request.gameVersion)) && (!loader || v.loaders?.includes(loader)) && (request.kind === 'modpacks' ? v.files?.some(f => /\.mrpack$/i.test(f.filename || '')) : v.files?.length));
   const version = eligible.find(v => v.version_type === 'release') || eligible[0];
   if (!version) throw new Error('Для выбранной версии Minecraft и загрузчика нет файла.');
   const file = request.kind === 'modpacks' ? version.files.find(f => /\.mrpack$/i.test(f.filename || '')) : version.files.find(f => f.primary) || version.files[0];

@@ -86,5 +86,11 @@ window.addEventListener('focus', refreshInstalledAll);
 
 window.astraDesktop.onGameProgress(progress => {
   if (progress.phase === 'backup' || progress.phase === 'java' || progress.phase === 'loader' || progress.phase === 'starting') toast(progress.message);
-  else if (progress.phase === 'error' || progress.phase === 'closed') toast(progress.message);
+  else if (progress.phase === 'error' && progress.profileId) {
+    showModal(`<h2>Не удалось запустить игру</h2><p>${esc(progress.message)}</p>${progress.detail ? `<pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto">${esc(progress.detail)}</pre>` : '<p>Подробности записаны в журнал игры.</p>'}<button class="button light full" data-launch-log="${esc(progress.profileId)}">Открыть журнал игры</button>`);
+  } else if (progress.phase === 'error' || progress.phase === 'closed') toast(progress.message);
+});
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-launch-log]');
+  if (button) window.astraDesktop.openGameLog(button.dataset.launchLog).catch(error => toast(humanError(error)));
 });

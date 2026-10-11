@@ -111,6 +111,7 @@ async function launch(profile, context) {
   const { userData, minecraftRoot, onProgress } = context;
   const marker = relativePath(minecraftRoot, `versions/${profile.version}/installed.json`);
   try { await fs.access(marker); } catch { throw new Error(`Сначала скачай Minecraft ${profile.version} в сборке.`); }
+  await require('./launch-repair.cjs').repairSkinConflict(userData, profile, onProgress);
   if (profile.loader === 'Fabric' || profile.loader === 'Quilt') await checkModFolder(path.join(instanceFolder(userData, profile.id), 'mods'));
   const metadata = JSON.parse(await fs.readFile(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.json`), 'utf8'));
   const java = await getJava(minecraftRoot, metadata, onProgress);
@@ -134,7 +135,7 @@ async function launch(profile, context) {
     extraJvm.push(`-javaagent:${await require('./ely-account.cjs').injector(minecraftRoot)}=ely.by`);
   }
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.19',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.20',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,
@@ -166,7 +167,7 @@ async function launch(profile, context) {
   for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { if (running?.child === child) { const text=running.log+chunk.toString();running.log=(account.token.length>20?text.replaceAll(account.token,'[token]'):text).slice(-8000); } });
   const launchLog = path.join(directory, 'astra-launch.log');
   child.on('error', async error => { if (running?.child === child) { await fs.writeFile(launchLog, `${running.log}\n${error.message}`, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: 'error', message: `${error.message} Журнал: ${launchLog}` }); } });
-  child.on('close', async code => { if (running?.child === child) { await fs.writeFile(launchLog, running.log, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: code === 0 ? 'closed' : 'error', message: code === 0 ? 'Игра закрыта.' : `Игра завершилась с кодом ${code}. Журнал: ${launchLog}` }); } });
+  child.on('close', async code => { if (running?.child === child) { const log = running.log; await fs.writeFile(launchLog, log, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: code === 0 ? 'closed' : 'error', profileId: profile.id, detail: log.split(/\r?\n/).filter(line => /Exception|Caused by:|ERROR|requires|incompatible/i.test(line)).slice(-12).join('\n'), message: code === 0 ? 'Игра закрыта.' : `Игра завершилась с кодом ${code}.` }); } });
   return { started: true, profileId: profile.id };
 }
 function status() { return running ? { running: true, profileId: running.id, pid: running.child.pid } : { running: false }; }

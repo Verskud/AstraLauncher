@@ -31,6 +31,12 @@ function mavenPath(name) {
   if (![group, artifact, version].every(value => value && /^[\w.+-]+$/.test(value)) || classifier && !/^[\w.+-]+$/.test(classifier)) throw new Error('Некорректная библиотека загрузчика.');
   return `${group.replaceAll('.', '/')}/${artifact}/${version}/${artifact}-${version}${classifier ? `-${classifier}` : ''}.jar`;
 }
+function matchesLoaderProfile(profile, metadata, selected) {
+  if (metadata?.inheritsFrom !== profile.version) return false;
+  if (profile.loader === 'Forge') return metadata.id === `${profile.version}-forge-${selected.slice(profile.version.length + 1)}` || metadata.id === `${profile.version}-forge-${selected}`;
+  if (profile.loader === 'NeoForge') return metadata.id === `neoforge-${selected}`;
+  return false;
+}
 async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
   validateProfile(profile);
   root = path.resolve(root);
@@ -38,7 +44,11 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
   const pinned = typeof profile.loaderVersion === 'string' && /^[A-Za-z0-9._+-]{1,80}$/.test(profile.loaderVersion) ? profile.loaderVersion : '';
   const folder = path.join(root, 'loaders', profile.loader.toLowerCase(), pinned ? `${profile.version}--${pinned}` : profile.version);
   const saved = path.join(folder, 'profile.json');
-  try { return JSON.parse(await fs.readFile(saved, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  try {
+    const cached = JSON.parse(await fs.readFile(saved, 'utf8'));
+    if (!pinned || !['Forge', 'NeoForge'].includes(profile.loader) || matchesLoaderProfile(profile, cached, profile.loader === 'Forge' ? `${profile.version}-${pinned}` : pinned)) return cached;
+    // An older ASTRA build could cache another installed Forge version here.
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
   onProgress({ phase: 'loader', message: `Устанавливаем ${profile.loader}…` });
   let metadata;
   if (profile.loader === 'Fabric' || profile.loader === 'Quilt') {
@@ -82,7 +92,7 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
       const file = path.join(versionRoot, entry.name, `${entry.name}.json`);
       try { candidatesJson.push({ file, data: JSON.parse(await fs.readFile(file, 'utf8')) }); } catch { /* another version */ }
     }
-    metadata = candidatesJson.find(item => item.data.inheritsFrom === profile.version)?.data;
+    metadata = candidatesJson.find(item => matchesLoaderProfile(profile, item.data, selected))?.data;
     if (!metadata) throw new Error(`Установщик ${profile.loader} не создал профиль версии.`);
   }
   await fs.mkdir(folder, { recursive: true });
@@ -111,4 +121,4 @@ async function runJava(java, args, cwd) {
     child.on('close', code => code === 0 ? resolve() : reject(new Error(`Установщик завершился с кодом ${code}. ${output.slice(-1200)}`)));
   });
 }
-module.exports = { validateProfile, instanceFolder, getLoaderProfile, mavenPath, loaderAvailable };
+module.exports = { validateProfile, instanceFolder, getLoaderProfile, mavenPath, loaderAvailable, matchesLoaderProfile };

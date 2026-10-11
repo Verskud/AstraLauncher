@@ -107,7 +107,7 @@ function createPlayerSkins(root, { download, decodePng } = {}) {
     if(profile.loader==='Vanilla')throw new Error('Для CustomSkinLoader выбери сборку с Fabric, Quilt, Forge или NeoForge.');
     const instance=instanceFolder(root,profile.id), existing=path.join(instance,'CustomSkinLoader','CustomSkinLoader.json');
     try { JSON.parse(await fs.readFile(existing,'utf8')); } catch(error) { if(error.code!=='ENOENT')throw new Error('Некорректные настройки CustomSkinLoader.'); }
-    const result=await download({source:'modrinth',kind:'mods',id:'idMHQ4n2',profileId:profile.id,gameVersion:profile.version,loader:profile.loader.toLowerCase()});
+    const result=await download({source:'modrinth',kind:'mods',id:'idMHQ4n2',profileId:profile.id,gameVersion:profile.version,loader:profile.loader.toLowerCase(),versionId:require('./launch-repair.cjs').skinVersionFor(profile)});
     await fs.writeFile(path.join(instance,'astra-skins.json'),JSON.stringify({enabled:true}));
     await prepare(profile,name); return result;
   }
