@@ -183,6 +183,7 @@ translateView = function () {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
       const node = walker.currentNode;
+      if (node.parentElement?.closest('.play-scene h2, .home-instance-label')) continue;
       if (node.parentElement?.closest('.pack-title, .pack-banner h1, .backup-world-names, .live-card .mod-title, .live-card p, .project-name, .project-description') || node.parentElement?.matches('.choose-pack > span:first-child') || node.parentElement?.matches('.mod-list-item strong') && !node.parentElement.closest('.backup-item')) continue;
       node.textContent = translateLegacyText(node.textContent);
     }

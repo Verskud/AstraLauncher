@@ -1,4 +1,6 @@
 document.documentElement.classList.add('desktop-app');
+// All page modules are now loaded; render the final views before first paint.
+render();
 const toolbar = document.querySelector('.toolbar');
 if (toolbar) {
   toolbar.innerHTML = `<button class="toolbar-notifications" type="button" data-action="notifications" aria-label="Уведомления" title="Уведомления">${icon('bell')}</button>`;

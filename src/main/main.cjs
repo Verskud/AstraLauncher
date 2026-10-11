@@ -20,7 +20,7 @@ const { createInstanceTools } = require('./instance-tools.cjs');
 const ely = require('./ely-account.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
-const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
+const TITLE_COLORS = Object.freeze({ dark:'#202222', graphite:'#242527', amethyst:'#24212a', ocean:'#20292e', forest:'#232b26', ember:'#2b2522', frost:'#f1f4f6', rose:'#2d2529', copper:'#2b2623', aurora:'#202b2a', slate:'#252932', sand:'#f3efe6' });
 const entry = path.join(__dirname, '../renderer/index.html');
 const supportsGlass = process.platform === 'win32' && Number(os.release().split('.')[2]) >= 22621;
 const entryUrl = pathToFileURL(entry).href;
@@ -47,7 +47,7 @@ function createWindow() {
     height: 760,
     minWidth: 900,
     minHeight: 560,
-    backgroundColor: '#111113',
+    backgroundColor: TITLE_COLORS.dark,
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: TITLE_COLORS.dark, symbolColor: '#f0f0f2', height: 40 },
     show: false,
@@ -110,7 +110,7 @@ if (!app.requestSingleInstanceLock()) {
           try { mainWindow.setBackgroundMaterial(glass ? 'acrylic' : 'none'); }
           catch (error) { mainWindow.setBackgroundColor(theme === 'glass' ? '#171b29' : TITLE_COLORS[theme]); console.warn('Window backdrop unavailable:', error.message); }
         }
-        mainWindow.setTitleBarOverlay({ color: glass ? '#00000000' : theme === 'glass' ? '#171b29' : TITLE_COLORS[theme], symbolColor: '#f0f0f2' });
+        mainWindow.setTitleBarOverlay({ color: glass ? '#00000000' : theme === 'glass' ? '#171b29' : TITLE_COLORS[theme], symbolColor: ['frost','sand'].includes(theme) ? '#303638' : '#f0f0f2' });
       }
     });
     const guarded = (channel, handler) => ipcMain.handle(channel, (event, ...args) => {

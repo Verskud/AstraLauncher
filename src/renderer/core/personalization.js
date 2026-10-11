@@ -5,19 +5,19 @@ const languages = [
   ['zh-TW', '國語（繁體）'], ['ar', 'العربية'], ['de-CH', 'Deutsch (Schweiz)'], ['nb', 'Norsk (bokmål)'],
 ];
 const palettes = {
-  dark: { bg: '#111113', sidebar: '#151517', panel: '#19191c', accent: '#bb9beb' },
-  graphite: { bg: '#202024', sidebar: '#27272b', panel: '#2a2a2f', accent: '#d0d0d8' },
-  amethyst: { bg: '#17121f', sidebar: '#1d1727', panel: '#251d31', accent: '#c5a5ee' },
-  ocean: { bg: '#0e1a23', sidebar: '#12222d', panel: '#192b37', accent: '#82c4db' },
-  forest: { bg: '#111b16', sidebar: '#17251d', panel: '#1e2d24', accent: '#98c8a6' },
-  ember: { bg: '#211711', sidebar: '#281c16', panel: '#32241d', accent: '#e5aa84' },
-  frost: { bg: '#121d25', sidebar: '#1a2a34', panel: '#223541', accent: '#b9dcec' },
-  rose: { bg: '#241820', sidebar: '#301e2a', panel: '#3b2633', accent: '#e3a8c2' },
-  copper: { bg: '#251b16', sidebar: '#31231b', panel: '#3d2c22', accent: '#dda676' },
-  aurora: { bg: '#101e1d', sidebar: '#162b29', panel: '#1d3532', accent: '#8fd9c2' },
-  slate: { bg: '#181d28', sidebar: '#202838', panel: '#293348', accent: '#a9badc' },
-  sand: { bg: '#242018', sidebar: '#302a1e', panel: '#3b3426', accent: '#dbc693' },
-  glass: { bg: '#151a2733', sidebar: '#1c223c66', panel: '#282f465c', accent: '#c6b4fb' },
+  dark: { bg: '#202222', sidebar: '#191b1b', panel: '#292c2c', accent: '#c6d6b3' },
+  graphite: { bg: '#242527', sidebar: '#1c1d1f', panel: '#2e3033', accent: '#ccd0d7' },
+  amethyst: { bg: '#24212a', sidebar: '#1c1921', panel: '#302c38', accent: '#cdb9e7' },
+  ocean: { bg: '#20292e', sidebar: '#192126', panel: '#2a353c', accent: '#a5cadb' },
+  forest: { bg: '#232b26', sidebar: '#1b221e', panel: '#2d3831', accent: '#b9cdaa' },
+  ember: { bg: '#2b2522', sidebar: '#221d1a', panel: '#38302a', accent: '#e8ba90' },
+  frost: { bg: '#f1f4f6', sidebar: '#e6ebee', panel: '#ffffff', accent: '#356780', light: true },
+  rose: { bg: '#2d2529', sidebar: '#231c20', panel: '#393035', accent: '#ddbbc9' },
+  copper: { bg: '#2b2623', sidebar: '#211d1a', panel: '#38312b', accent: '#d9b39a' },
+  aurora: { bg: '#202b2a', sidebar: '#192221', panel: '#2a3735', accent: '#a5d3c5' },
+  slate: { bg: '#252932', sidebar: '#1d2028', panel: '#303642', accent: '#b7c6e2' },
+  sand: { bg: '#f3efe6', sidebar: '#e9e3d7', panel: '#fffdf8', accent: '#6a603e', light: true },
+  glass: { bg: '#20262799', sidebar: '#1b2225a6', panel: '#344045a6', accent: '#bfd4cf' },
 };
 const extraThemeIds = ['frost','rose','copper','aurora','slate','sand'];
 const extraThemeNames = {
@@ -255,18 +255,11 @@ settingsPage = function () {
     const limit = [3, 5, 10].includes(Number(state.backupLimit)) ? Number(state.backupLimit) : 5;
     content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),memoryHint,`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',javaHint,`<span class="setting-value">${automatic}</span>`)}${settingRow(t('backups'),backupHint,`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups!==false?'checked':''}><span></span></label>`)}${settingRow(retentionTitle,retentionHint,`<select id="backup-limit" aria-label="${retentionTitle}">${[3,5,10].map(count=>`<option value="${count}" ${limit===count?'selected':''}>${count}</option>`).join('')}</select>`)}`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.20</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.21</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };
 
-discover = function () {
-  const recent = state.packs[state.packs.length - 1];
-  const recentCard = recent
-    ? `<button class="home-recent" data-pack="${esc(recent.id)}">${art(recent.art,`home-${recent.id}`)}<span class="home-recent-shade"></span><span class="home-recent-copy"><small>${t('libraryTitle')}</small><strong>${esc(recent.name)}</strong><em>${esc(recent.loader)} · ${esc(recent.version)}</em></span><span class="home-recent-arrow">${icon('arrow')}</span></button>`
-    : `<button class="home-recent home-recent-empty" data-action="create"><span class="home-recent-plus">+</span><span class="home-recent-copy"><small>ASTRA</small><strong>${t('newPack')}</strong><em>${t('newPackHint')}</em></span><span class="home-recent-arrow">${icon('arrow')}</span></button>`;
-  return `<div class="home-page"><section class="page-intro"><div><div class="eyebrow">ASTRA LAUNCHER</div><h1>${t('homeTitle')}</h1><p>${t('homeIntro')}</p></div><button class="button secondary" data-action="create">+ <span>${t('createPack')}</span></button></section><div class="home-feature-grid"><section class="hero">${art('forest','home-hero')}<div class="hero-shade"></div><div class="hero-content"><span class="hero-kicker">✧ MODRINTH</span><h2>${t('liveCatalog')}</h2><p>${t('liveIntro')}</p><button class="button light" data-page="mods">${t('openCatalog')} ${icon('arrow')}</button></div><span class="hero-corner">ASTRA CATALOG</span></section>${recentCard}</div><div class="home-actions"><button data-page="library"><span class="quick-icon">${icon('folder')}</span><span><strong>${t('libraryTitle')}</strong><small>${t('libraryIntro')}</small></span>${icon('arrow')}</button><button data-action="import"><span class="quick-icon">${icon('down')}</span><span><strong>${t('importAction')}</strong><small>.mrpack · ZIP · ASTRA</small></span>${icon('arrow')}</button><button data-page="downloads"><span class="quick-icon">${icon('down')}</span><span><strong>${t('downloadTitle')}</strong><small>${t('downloadIntro')}</small></span>${icon('arrow')}</button></div></div>`;
-};
 library = function () {
   return `<section class="page-intro"><div><div class="eyebrow">ASTRA</div><h1>${t('libraryTitle')}<span class="heading-count">${state.packs.length}</span></h1><p>${t('libraryIntro')}</p></div><button class="button light" data-action="create">+ ${t('createPack')}</button></section><div class="pack-grid">${state.packs.map(p=>`<article class="pack-card"><button class="pack-art" data-pack="${esc(p.id)}">${art(p.art,p.id)}<span class="pill">${esc(p.loader)} · ${esc(p.version)}</span></button><div class="pack-info"><button class="pack-title" data-pack="${esc(p.id)}">${esc(p.name)}</button><p>${installedRecordsForPack(p,'mods').length} ${t('mods')}</p><div><button class="button secondary" data-pack-settings="${esc(p.id)}">${t('settings')}</button><button class="button light compact" data-launch="${esc(p.id)}" aria-label="${esc(p.name)}" ${loaderAvailable(p.version,p.loader)?'':'disabled title="Select a compatible loader in settings"'}>${icon('play')}</button></div></div></article>`).join('')}<button class="new-pack" data-action="create"><span>+</span><strong>${t('newPack')}</strong><small>${t('newPackHint')}</small></button></div>`;
 };
@@ -311,10 +304,12 @@ applyAppearance = function () {
   document.body.classList.toggle('themed', state.theme !== 'dark');
   document.documentElement.classList.toggle('glass-surface', state.theme === 'glass');
   const palette = palettes[state.theme] || palettes.dark;
+  document.body.classList.toggle('light-theme', palette.light === true);
+  document.body.style.colorScheme = palette.light ? 'light' : 'dark';
   document.body.style.setProperty('--bg', palette.bg);
   document.body.style.setProperty('--panel', palette.panel);
   document.body.style.setProperty('--theme-sidebar', palette.sidebar);
-  document.body.style.setProperty('--purple', state.accent === 'mono' ? '#d2d2db' : palette.accent);
+  document.body.style.setProperty('--purple', state.accent === 'mono' ? (palette.light ? '#42464b' : '#d2d2db') : palette.accent);
   window.astraDesktop?.setWindowTheme?.(state.theme);
 };
 
@@ -329,6 +324,8 @@ const baseSearchLive = searchLive;
 searchLive = async function (append = false) { await baseSearchLive(append); translateView(); };
 
 function translateView() {
+  const libraryHeading = $('#side-library-title');
+  if (libraryHeading) libraryHeading.textContent = t('myPacks');
   if (currentLanguage() === 'ru') return;
   const reverse = new Map(Object.entries(words.ru).map(([key,value])=>[value,key]));
   const nodes = [$('#main'), $('#navigation'), $('#side-packs'), $('.sidebar'), $('#modal-content')].filter(Boolean);
@@ -338,6 +335,7 @@ function translateView() {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
       const node = walker.currentNode;
+      if (node.parentElement?.closest('.play-scene h2, .home-instance-label, .pack-title, .side-pack, .pack-banner h1')) continue;
       const original = node.textContent.trim();
       const key = reverse.get(original);
       if (key) node.textContent = node.textContent.replace(original,t(key));

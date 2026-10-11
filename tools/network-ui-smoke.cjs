@@ -55,6 +55,8 @@ async function run(){
  await page.evaluate(()=>{modpackPending=false;modal.close();});
  await page.evaluate(()=>{window.astraDesktop.openGameLog=async id=>{window.openedGameLog=id;};window.testGameProgress({phase:'error',profileId:state.packs[0].id,message:'Игра завершилась с кодом 1.',detail:'Exception: <script>alert(1)</script>'});});
  assert.match(await page.locator('#modal pre').innerText(),/<script>/);assert.equal(await page.locator('#modal pre script').count(),0);await page.locator('[data-launch-log]').click();assert.equal(await page.evaluate(()=>window.openedGameLog),await page.evaluate(()=>state.packs[0].id));await page.locator('#modal').evaluate(element=>element.close());
+ await page.waitForFunction(()=>!document.querySelector('#modal').open);
+ await require('./design-ui-check.cjs')(page);
  assert.deepEqual(errors,[]);console.log('UI OK: server CRUD, escaped MOTD, skin front/back, install, 12 languages, 900×560 layout, archive progress and speed.');
  }finally{await browser.close();}
 }

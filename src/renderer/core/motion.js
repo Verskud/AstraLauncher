@@ -1,10 +1,12 @@
-// Animate navigation rather than every progress update or background refresh.
+// Animate stable containers: background refreshes must not restart the entrance.
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 const motionAllowed = () => state.animations !== false && !motionPreference.matches;
+const motionEase = 'cubic-bezier(.22,1,.36,1)';
 const applyAppearanceBeforeMotion = applyAppearance;
 applyAppearance = function () {
   applyAppearanceBeforeMotion();
   document.documentElement.classList.toggle('reduce-motion', !motionAllowed());
+  if (!motionAllowed()) document.getAnimations().forEach(animation => { if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish(); });
 };
 motionPreference.addEventListener('change', () => applyAppearance());
 document.addEventListener('change', event => {
@@ -12,60 +14,58 @@ document.addEventListener('change', event => {
   state.animations = event.target.checked;
   save();
   applyAppearance();
-  if (!motionAllowed()) document.getAnimations().forEach(animation => animation.cancel());
 });
-function revealElements(elements) {
-  if (!motionAllowed()) return;
-  [...elements].slice(0,12).forEach((element,index) => element.animate([
-    { opacity: .35, transform: 'translateY(9px)' },
-    { opacity: 1, transform: 'translateY(0)' },
-  ], { duration: 270, delay: Math.min(index * 22,110), easing: 'cubic-bezier(.2,.7,.2,1)' }));
-}
+let pageEntrance;
 let motionViewKey = '';
 const renderBeforeMotion = render;
 render = function () {
-  const key = [page, page==='pack'?selectedPack:'', page==='pack'?packTab:'', page==='settings'?settingsTab:'',page==='mods'?catalogType:''].join('|');
+  const key = [page, page==='pack'?selectedPack:'', page==='pack'?packTab:'', page==='settings'?settingsTab:'', page==='mods'?catalogType:''].join('|');
   renderBeforeMotion();
-  if (key !== motionViewKey) {
-    motionViewKey = key;
-    const home = document.querySelector('.home-page');
-    revealElements(home ? home.children : $('#main').children);
-  }
+  if (key === motionViewKey) return;
+  motionViewKey = key;
+  pageEntrance?.cancel();
+  if (motionAllowed()) pageEntrance = $('#main').animate([
+    { opacity: 0, transform: 'translateY(5px)' },
+    { opacity: 1, transform: 'translateY(0)' },
+  ], { duration: 210, easing: motionEase });
 };
-const searchBeforeMotion = searchLive;
-searchLive = async function (append=false) {
-  const previousCount = append ? $('#live-results')?.children.length || 0 : 0;
-  await searchBeforeMotion(append);
-  if (page === 'mods') revealElements([...($('#live-results')?.children || [])].slice(previousCount));
-};
-
-// Keep the dialog modal throughout its exit animation and cancel stale exits on reopen.
+// One entrance/exit at a time. Reopening during an exit cancels the stale close.
 const closeDialogImmediately = modal.close.bind(modal);
 const showModalBeforeMotion = showModal;
-let dialogExit = null;
-let dialogCloseTimer = null;
+let dialogEntrance;
+let dialogExit;
+let dialogCloseTimer;
 modal.close = function (returnValue) {
   if (!modal.open || dialogExit) return;
+  dialogEntrance?.cancel();
   if (!motionAllowed()) { closeDialogImmediately(returnValue); return; }
-  dialogExit = modal.animate([{ opacity:1,transform:'translateY(0) scale(1)' },{ opacity:0,transform:'translateY(6px) scale(.985)' }],{ duration:140,easing:'ease-in',fill:'forwards' });
-  dialogCloseTimer = setTimeout(() => {
+  dialogExit = modal.animate([{ opacity:1,transform:'translateY(0)' },{ opacity:0,transform:'translateY(4px)' }], { duration:110,easing:'ease-out',fill:'forwards' });
+  const finish = () => {
+    clearTimeout(dialogCloseTimer);
     closeDialogImmediately(returnValue);
     dialogExit?.cancel();
     dialogExit = null;
-    dialogCloseTimer = null;
-  },140);
+  };
+  dialogExit.onfinish = finish;
+  // Also complete if the animation clock is suspended when the window is hidden.
+  dialogCloseTimer = setTimeout(finish, 160);
 };
 showModal = function (html) {
   clearTimeout(dialogCloseTimer);
+  if (dialogExit) dialogExit.onfinish = null;
   dialogExit?.cancel();
+  dialogEntrance?.cancel();
   dialogExit = null;
   const wasOpen = modal.open;
   showModalBeforeMotion(html);
-  if (motionAllowed()) (wasOpen ? $('#modal-content') : modal).animate([
-    { opacity:.35,transform:wasOpen?'translateY(4px)':'translateY(12px) scale(.975)' },
+  if (motionAllowed() && !wasOpen) dialogEntrance = modal.animate([
+    { opacity:0,transform:'translateY(10px) scale(.99)' },
     { opacity:1,transform:'translateY(0) scale(1)' },
-  ],{ duration:220,easing:'cubic-bezier(.2,.7,.2,1)' });
+  ], { duration:220,easing:motionEase });
 };
-modal.addEventListener('cancel',event => { event.preventDefault();modal.close(); });
+modal.addEventListener('cancel', event => {
+  if (event.defaultPrevented) return; // An installer may have opened a confirmation.
+  event.preventDefault();
+  modal.close();
+});
 applyAppearance();
-revealElements(document.querySelector('.home-page')?.children || $('#main').children);
