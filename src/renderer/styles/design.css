@@ -27,6 +27,7 @@ body.light-theme {
 .sidebar,.themed .sidebar { width:210px; padding:20px 14px 16px; background:var(--theme-sidebar); border-color:var(--line); }
 .sidebar .brand,.desktop-app .sidebar .brand { margin:14px 8px 32px; gap:9px; }
 .brand img { width:44px; height:44px; margin:0; }
+.light-theme .brand img,.light-theme .about-brand img { filter:brightness(0) saturate(100%) invert(18%); }
 .brand>span { font-size:22px; letter-spacing:1px; font-weight:800; }
 .brand-sub { font-size:8px; letter-spacing:2.7px; color:var(--muted); margin-top:6px; }
 .sidebar>.nav-label { display:none; }
