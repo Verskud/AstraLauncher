@@ -53,7 +53,7 @@ function checkedUrl(value, first) {
 async function fetchFile(url, expectedSize, signal) {
   let address = checkedUrl(url, true);
   for (let redirect = 0; redirect <= 5; redirect++) {
-    const response = await fetch(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.10' } });
+    const response = await fetch(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.11' } });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       if (redirect === 5) throw new Error('Слишком много перенаправлений при загрузке.');
       address = checkedUrl(new URL(response.headers.get('location') || '', address).href, false);

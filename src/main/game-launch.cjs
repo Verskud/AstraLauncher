@@ -18,21 +18,29 @@ function offlineAccount(name) {
   hash[6] = (hash[6] & 0x0f) | 0x30; hash[8] = (hash[8] & 0x3f) | 0x80;
   return { name, uuid: hash.toString('hex'), token: '0', userType: 'legacy' };
 }
-function matchesRules(value) {
+const LAUNCH_FEATURES = Object.freeze({
+  has_custom_resolution: true,
+  has_quick_plays_support: true,
+  is_demo_user: false,
+  is_quick_play_singleplayer: false,
+  is_quick_play_multiplayer: false,
+  is_quick_play_realms: false,
+});
+function matchesRules(value, features = LAUNCH_FEATURES) {
   if (!Array.isArray(value.rules)) return true;
   let allowed = false;
   for (const rule of value.rules) {
     const osMatch = !rule.os || (rule.os.name === 'windows' && (!rule.os.arch || rule.os.arch === (process.arch === 'x64' ? 'x86_64' : 'x86')) && (!rule.os.version || new RegExp(rule.os.version).test(os.release())));
-    const featuresMatch = !rule.features || Object.values(rule.features).every(feature => feature === false);
+    const featuresMatch = !rule.features || Object.entries(rule.features).every(([name, enabled]) => (features[name] ?? false) === enabled);
     if (osMatch && featuresMatch) allowed = rule.action === 'allow';
   }
   return allowed;
 }
 function expand(value, substitutions) { return String(value).replace(/\$\{([^}]+)\}/g, (_match, key) => { if (!Object.hasOwn(substitutions, key)) throw new Error(`Неизвестный параметр запуска: ${key}`); return String(substitutions[key]); }); }
-function args(items, substitutions) {
+function args(items, substitutions, features = LAUNCH_FEATURES) {
   return (items || []).flatMap(item => {
     if (typeof item === 'string') return [expand(item, substitutions)];
-    if (!matchesRules(item)) return [];
+    if (!matchesRules(item, features)) return [];
     return (Array.isArray(item.value) ? item.value : [item.value]).map(value => expand(value, substitutions));
   });
 }
@@ -120,7 +128,7 @@ async function launch(profile, context) {
   if (!['Forge','NeoForge'].includes(profile.loader) || loader?.minecraftArguments) classpath.push(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.jar`));
   const account = profile.accountMode === 'microsoft' ? await microsoft.minecraftAccount() : offlineAccount(profile.playerName || 'Player');
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.10',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.11',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,
@@ -128,7 +136,10 @@ async function launch(profile, context) {
     game_assets: path.join(minecraftRoot, 'assets', 'virtual', 'legacy'),
     assets_index_name: metadata.assets || metadata.assetIndex.id,
     auth_uuid: account.uuid, auth_access_token: account.token,
+    auth_session: `token:${account.token}:${account.uuid}`,
     clientid: '', auth_xuid: account.xuid || '', user_type: account.userType,
+    client: '', user_properties_map: '{}',
+    quickPlayPath: '', quickPlaySingleplayer: '', quickPlayMultiplayer: '', quickPlayRealms: '',
     version_type: loader ? 'release' : metadata.type || 'release',
     resolution_width: '1280', resolution_height: '720', user_properties: '{}',
   };
@@ -153,4 +164,4 @@ async function launch(profile, context) {
   return { started: true, profileId: profile.id };
 }
 function status() { return running ? { running: true, profileId: running.id, pid: running.child.pid } : { running: false }; }
-module.exports = { launch, status, offlineAccount, matchesRules, zipNativeFiles };
+module.exports = { launch, status, offlineAccount, matchesRules, expand, args, LAUNCH_FEATURES, zipNativeFiles };
