@@ -6,6 +6,20 @@ const { getCurseForgeKey } = require('./preferences.cjs');
 const { instanceFolder } = require('./game-loader.cjs');
 const { hashFile } = require('./game-files.cjs');
 const { fabricMetadata, matchesVersion, checkFabricCompatibility } = require('./mod-compat.cjs');
+const MAX_DOWNLOAD_SIZE = 1024 * 1024 * 1024;
+
+async function readResponseBytes(response, limit = MAX_DOWNLOAD_SIZE) {
+  const declaredSize = Number(response.headers.get('content-length') || 0);
+  if (Number.isFinite(declaredSize) && declaredSize > limit) throw new Error('Файл превышает допустимый размер загрузки.');
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of response.body) {
+    size += chunk.length;
+    if (size > limit) throw new Error('Файл превышает допустимый размер загрузки.');
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks, size);
+}
 
 function assertProject(request) {
   if (!['modrinth','curseforge'].includes(request?.source) || !['mods','modpacks','shaders','resources'].includes(request?.kind)) throw new Error('Неизвестный проект.');
@@ -16,7 +30,7 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.11' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.12' };
   if (key) headers['x-api-key'] = key;
   const response = await fetch(url, { headers, signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20000)]) : AbortSignal.timeout(20000) });
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
@@ -44,9 +58,7 @@ async function resolveModrinth(request, signal) {
 async function fetchResolved(resolved, signal) {
   const response = await fetch(resolved.url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120000)]) : AbortSignal.timeout(120000) });
   if (!response.ok) throw new Error(`Не удалось скачать файл: ${response.status}.`);
-  if (Number(response.headers.get('content-length') || 0) > 150_000_000) throw new Error('Файл слишком большой для этой версии Astra.');
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length > 150_000_000) throw new Error('Файл слишком большой для этой версии Astra.');
+  const bytes = await readResponseBytes(response);
   if (resolved.sha512 && crypto.createHash('sha512').update(bytes).digest('hex') !== resolved.sha512) throw new Error('Контрольная сумма файла не совпала.');
   if (resolved.sha1 && crypto.createHash('sha1').update(bytes).digest('hex') !== resolved.sha1) throw new Error('Контрольная сумма файла не совпала.');
   return bytes;
@@ -234,4 +246,4 @@ async function openWorldsFolder(profileId) {
   return true;
 }
 
-module.exports = { download, showFile, openFolder, removeInstalled, listInstalled, openWorldsFolder, resolveModrinth, fetchResolved };
+module.exports = { download, showFile, openFolder, removeInstalled, listInstalled, openWorldsFolder, resolveModrinth, fetchResolved, readResponseBytes, MAX_DOWNLOAD_SIZE };

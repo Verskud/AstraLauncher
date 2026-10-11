@@ -128,7 +128,7 @@ async function launch(profile, context) {
   if (!['Forge','NeoForge'].includes(profile.loader) || loader?.minecraftArguments) classpath.push(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.jar`));
   const account = profile.accountMode === 'microsoft' ? await microsoft.minecraftAccount() : offlineAccount(profile.playerName || 'Player');
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.11',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.12',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,
