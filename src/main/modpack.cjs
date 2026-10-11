@@ -4,6 +4,8 @@ const crypto = require('node:crypto');
 const { openZip, safePath } = require('./zip-reader.cjs');
 const { loaderAvailable } = require('./game-loader.cjs');
 const { withDownloadResponse } = require('./download-response.cjs');
+const { writeResponseFile, retryDownload } = require('./download-stream.cjs');
+const { downloadRanges } = require('./download-ranges.cjs');
 
 const allowedSources = new Set(['cdn.modrinth.com', 'github.com', 'raw.githubusercontent.com', 'gitlab.com']);
 const loaderKeys = { 'fabric-loader': 'Fabric', 'quilt-loader': 'Quilt', forge: 'Forge', neoforge: 'NeoForge' };
@@ -51,30 +53,22 @@ function checkedUrl(value, first) {
   return address.href;
 }
 
-async function fetchFile(url, expectedSize, signal) {
+async function fetchFile(url, expectedSize, signal, target, hash, onProgress) {
   let address = checkedUrl(url, true);
+  if (await downloadRanges(address, target, { size: expectedSize, limit: MAX_FILE, sha512: hash, signal, onProgress })) return;
   for (let redirect = 0; redirect <= 5; redirect++) {
-    const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.18' } }, async (response, touch) => {
+    const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.19' } }, async (response, touch) => {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       await response.body?.cancel();
       if (redirect === 5) throw new Error('Слишком много перенаправлений при загрузке.');
       return { redirect: checkedUrl(new URL(response.headers.get('location') || '', address).href, false) };
     }
-    if (!response.ok) throw new Error(`Сервер файла ответил кодом ${response.status}.`);
-    if (Number(response.headers.get('content-length') || 0) > expectedSize) throw new Error('Размер файла сборки не совпал.');
-    const chunks = []; let size = 0;
-    for await (const chunk of response.body) {
-      touch();
-      size += chunk.length;
-      if (size > expectedSize) throw new Error('Размер файла сборки не совпал.');
-      chunks.push(chunk);
-    }
-    const bytes = Buffer.concat(chunks);
-    if (bytes.length !== expectedSize) throw new Error('Файл сборки скачался не полностью.');
-    return { bytes };
-    });
+    if (!response.ok) throw Object.assign(new Error(`Сервер файла ответил кодом ${response.status}.`), { status: response.status });
+    await writeResponseFile(response, target, { limit: MAX_FILE, expectedSize, sha512: hash, signal, touch, onProgress });
+    return { written: true };
+    }, { idleTimeoutMs: 30000 });
     if (result.redirect) { address = result.redirect; continue; }
-    return result.bytes;
+    return;
   }
 }
 
@@ -92,9 +86,9 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
     let zip;
     try {
       progress('resolving', 0, 0, 'Получаем файл сборки…');
-      const input = typeof source === 'function' ? await source(controller.signal) : source;
-      if (controller.signal.aborted) throw new Error('Установка отменена.');
       await fs.mkdir(staging, { recursive: true });
+      const input = typeof source === 'function' ? await source(controller.signal, data => onProgress({ completed: 0, total: 0, ...data }), staging) : source;
+      if (controller.signal.aborted) throw new Error('Установка отменена.');
       let filename = input.path;
       if (input.bytes) {
         filename = path.join(staging, 'pack.mrpack');
@@ -104,7 +98,6 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
       const entry = zip.entries.find(item => item.name === 'modrinth.index.json');
       if (!entry) throw new Error('В архиве нет modrinth.index.json. Нужен файл .mrpack.');
       const manifest = parseIndex(await zip.read(entry));
-      const targetNames = new Set(manifest.files.map(item => item.path.toLowerCase()));
       const overrides = zip.entries.filter(item => !item.isDirectory && (item.name.startsWith('overrides/') || item.name.startsWith('client-overrides/')));
       for (const item of overrides) {
         const relative = checkedRelative(item.name.substring(item.name.indexOf('/') + 1));
@@ -112,23 +105,52 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
       }
       const total = manifest.files.length + overrides.length;
       let completed = 0;
+      let receivedBytes = 0, lastReport = 0;
+      const transferStarted = Date.now();
+      const totalBytes = manifest.files.reduce((sum, item) => sum + item.size, 0);
+      const transferred = new Map();
+      const workersController = new AbortController();
+      const workerSignal = AbortSignal.any([controller.signal, workersController.signal]);
+      function reportTransfer(message) {
+        onProgress({ phase: 'install', completed, total, receivedBytes, totalBytes, bytesPerSecond: receivedBytes / Math.max(1, (Date.now() - transferStarted) / 1000), message });
+      }
+      function transferProgress(item, bytes) {
+        receivedBytes += bytes - (transferred.get(item.path) || 0);
+        transferred.set(item.path, bytes);
+        if (Date.now() - lastReport < 200) return;
+        lastReport = Date.now();
+        reportTransfer(item.path);
+      }
       progress('install', 0, total, `Устанавливаем ${manifest.name}…`);
-      for (const item of manifest.files) {
-        if (controller.signal.aborted) throw new Error('Установка отменена.');
-        let bytes, lastError;
-        for (const address of item.downloads) {
-          try {
-            bytes = await fetchFile(address, item.size, controller.signal);
-            if (crypto.createHash('sha512').update(bytes).digest('hex') !== item.hash) throw new Error('Контрольная сумма файла не совпала.');
-            break;
-          } catch (error) { bytes = null; lastError = error; if (controller.signal.aborted) throw error; }
-        }
-        if (!bytes) throw new Error(`Не удалось загрузить ${item.path}: ${lastError?.message || 'нет доступного адреса'}`);
+      async function installFile(item) {
+        workerSignal.throwIfAborted();
         const target = path.join(staging, ...item.path.split('/'));
         await fs.mkdir(path.dirname(target), { recursive: true });
-        await fs.writeFile(target, bytes, { flag: 'wx' });
-        progress('install', ++completed, total, item.path);
+        let written = false, lastError;
+        for (const address of item.downloads) {
+          try {
+            await retryDownload(() => fetchFile(address, item.size, workerSignal, target, item.hash, bytes => transferProgress(item, bytes)), workerSignal, attempt => reportTransfer(`Повторная загрузка ${item.path}: попытка ${attempt} из 3…`));
+            written = true;
+            break;
+          } catch (error) { lastError = error; if (workerSignal.aborted) throw error; }
+        }
+        if (!written) throw new Error(`Не удалось загрузить ${item.path}: ${lastError?.message || 'нет доступного адреса'}`);
+        completed++;
+        reportTransfer(item.path);
       }
+      let nextFile = 0;
+      const workers = Array.from({ length: Math.min(6, manifest.files.length) }, async () => {
+        try {
+          while (nextFile < manifest.files.length) {
+            workerSignal.throwIfAborted();
+            await installFile(manifest.files[nextFile++]);
+          }
+        } catch (error) { workersController.abort(error); throw error; }
+      });
+      const results = await Promise.allSettled(workers);
+      if (workersController.signal.aborted) throw workersController.signal.reason;
+      const failed = results.find(result => result.status === 'rejected');
+      if (failed) throw failed.reason;
       for (const layer of ['overrides/', 'client-overrides/']) {
         for (const item of overrides.filter(value => value.name.startsWith(layer))) {
           if (controller.signal.aborted) throw new Error('Установка отменена.');
@@ -140,7 +162,7 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
         }
       }
       await zip.close(); zip = null;
-      if (input.bytes) await fs.rm(filename, { force: true });
+      if (input.bytes || input.temporary) await fs.rm(filename, { force: true });
       if (controller.signal.aborted) throw new Error('Установка отменена.');
       const profile = { id, name: manifest.name, version: manifest.version, loader: manifest.loader, loaderVersion: manifest.loaderVersion, art: 'forest', mods: [], last: 'Импортирована', source: input.catalog ? 'modrinth' : 'local-mrpack' };
       await fs.writeFile(path.join(staging, 'astra-pack.json'), JSON.stringify(profile), { flag: 'wx' });

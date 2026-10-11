@@ -134,7 +134,7 @@ async function launch(profile, context) {
     extraJvm.push(`-javaagent:${await require('./ely-account.cjs').injector(minecraftRoot)}=ely.by`);
   }
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.18',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.19',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,

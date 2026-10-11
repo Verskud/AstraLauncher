@@ -8,6 +8,8 @@ const { hashFile } = require('./game-files.cjs');
 const { fabricMetadata, matchesVersion, checkFabricCompatibility } = require('./mod-compat.cjs');
 const MAX_DOWNLOAD_SIZE = 1024 * 1024 * 1024;
 const { withDownloadResponse } = require('./download-response.cjs');
+const { writeResponseFile, retryDownload } = require('./download-stream.cjs');
+const { downloadRanges } = require('./download-ranges.cjs');
 
 async function readResponseBytes(response, limit = MAX_DOWNLOAD_SIZE, touch = () => {}) {
   const declaredSize = Number(response.headers.get('content-length') || 0);
@@ -32,7 +34,7 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.18' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.19' };
   if (key) headers['x-api-key'] = key;
   return withDownloadResponse(url, { headers, signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
@@ -55,7 +57,16 @@ async function resolveModrinth(request, signal) {
   const downloadUrl = new URL(file.url);
   if (downloadUrl.protocol !== 'https:' || downloadUrl.hostname !== 'cdn.modrinth.com') throw new Error('Неожиданный адрес файла Modrinth.');
   if (request.kind === 'modpacks' && !/^[a-f0-9]{128}$/i.test(file.hashes?.sha512 || '')) throw new Error('У сборки отсутствует контрольная сумма SHA-512.');
-  return { url: downloadUrl.href, filename: file.filename, sha512: file.hashes?.sha512, version: version.version_number, required: (version.dependencies || []).filter(d => d.dependency_type === 'required') };
+  return { url: downloadUrl.href, filename: file.filename, size: file.size, sha512: file.hashes?.sha512, version: version.version_number, required: (version.dependencies || []).filter(d => d.dependency_type === 'required') };
+}
+
+async function fetchResolvedToFile(resolved, target, signal, onProgress = () => {}, onRetry = () => {}) {
+  const expectedSize = Number.isSafeInteger(resolved.size) && resolved.size >= 0 ? resolved.size : undefined;
+  if (await retryDownload(() => downloadRanges(resolved.url, target, { size: expectedSize, limit: MAX_DOWNLOAD_SIZE, sha512: resolved.sha512, sha1: resolved.sha1, signal, onProgress }), signal, onRetry)) return expectedSize;
+  return retryDownload(() => withDownloadResponse(resolved.url, { signal }, async (response, touch) => {
+    if (!response.ok) throw Object.assign(new Error(`Не удалось скачать файл: ${response.status}.`), { status: response.status });
+    return writeResponseFile(response, target, { limit: MAX_DOWNLOAD_SIZE, expectedSize, sha512: resolved.sha512, sha1: resolved.sha1, signal, touch, onProgress });
+  }, { idleTimeoutMs: 30000 }), signal, onRetry);
 }
 
 async function fetchResolved(resolved, signal) {
@@ -251,4 +262,4 @@ async function openWorldsFolder(profileId) {
   return true;
 }
 
-module.exports = { download, showFile, openFolder, removeInstalled, listInstalled, openWorldsFolder, resolveModrinth, fetchResolved, readResponseBytes, MAX_DOWNLOAD_SIZE };
+module.exports = { download, showFile, openFolder, removeInstalled, listInstalled, openWorldsFolder, resolveModrinth, fetchResolved, fetchResolvedToFile, readResponseBytes, MAX_DOWNLOAD_SIZE };

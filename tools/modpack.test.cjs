@@ -118,3 +118,63 @@ test('rejects duplicate files and file-directory collisions in either order', as
     await assert.rejects(openZip(archive), /небезопасный путь/);
   } finally { await fs.rm(temp, { recursive: true, force: true }); }
 });
+
+test('downloads multiple verified files concurrently with at most six requests', async () => {
+  const temp = await tempFolder();
+  const oldFetch = global.fetch;
+  try {
+    const bytes = Buffer.from('parallel mod');
+    const hash = crypto.createHash('sha512').update(bytes).digest('hex');
+    const files = Array.from({ length: 14 }, (_, i) => ({ path: `mods/${i}.jar`, downloads: [`https://cdn.modrinth.com/${i}.jar`], fileSize: bytes.length, hashes: { sha512: hash } }));
+    const archive = path.join(temp, 'parallel.mrpack');
+    await fs.writeFile(archive, zip({ 'modrinth.index.json': JSON.stringify({ formatVersion: 1, game: 'minecraft', name: 'Parallel', files, dependencies: { minecraft: '1.21.1' } }) }));
+    let running = 0, peak = 0;
+    global.fetch = async (_url, { signal }) => {
+      peak = Math.max(peak, ++running);
+      try { await require('node:timers/promises').setTimeout(30, undefined, { signal }); return new Response(bytes); }
+      finally { running--; }
+    };
+    const result = await createModpackInstaller({ userData: temp }).install({ path: archive });
+    assert.ok(peak > 1 && peak <= 6, `concurrency=${peak}`);
+    assert.equal((await fs.readdir(path.join(result.folder, 'mods'))).length, 14);
+    assert.equal(running, 0);
+  } finally { global.fetch = oldFetch; await fs.rm(temp, { recursive: true, force: true }); }
+});
+
+test('worker failure aborts and waits for other transfers before removing staging', async () => {
+  const temp = await tempFolder();
+  const oldFetch = global.fetch;
+  try {
+    const bytes = Buffer.from('mod');
+    const files = Array.from({ length: 10 }, (_, i) => ({ path: `mods/${i}.jar`, downloads: [`https://cdn.modrinth.com/${i}.jar`], fileSize: bytes.length, hashes: { sha512: '0'.repeat(128) } }));
+    const archive = path.join(temp, 'fail-workers.mrpack');
+    await fs.writeFile(archive, zip({ 'modrinth.index.json': JSON.stringify({ formatVersion: 1, game: 'minecraft', name: 'Fail workers', files, dependencies: { minecraft: '1.21.1' } }) }));
+    let running = 0, cancelled = 0;
+    global.fetch = async (url, { signal }) => {
+      running++;
+      try { await require('node:timers/promises').setTimeout(url.endsWith('/0.jar') ? 20 : 500, undefined, { signal }); return new Response(bytes); }
+      catch (error) { if (signal.aborted) cancelled++; throw error; }
+      finally { running--; }
+    };
+    await assert.rejects(createModpackInstaller({ userData: temp }).install({ path: archive }), /Контрольная сумма/);
+    assert.equal(running, 0);
+    assert.ok(cancelled > 0);
+    assert.deepEqual(await fs.readdir(path.join(temp, 'instances')), []);
+  } finally { global.fetch = oldFetch; await fs.rm(temp, { recursive: true, force: true }); }
+});
+
+test('a temporary server failure is retried instead of deleting the pack immediately', async () => {
+  const temp = await tempFolder();
+  const oldFetch = global.fetch;
+  try {
+    const bytes = Buffer.from('retry mod');
+    const file = { path: 'mods/test.jar', downloads: ['https://cdn.modrinth.com/test.jar'], fileSize: bytes.length, hashes: { sha512: crypto.createHash('sha512').update(bytes).digest('hex') } };
+    const archive = path.join(temp, 'retry.mrpack');
+    await fs.writeFile(archive, zip({ 'modrinth.index.json': JSON.stringify({ formatVersion: 1, game: 'minecraft', name: 'Retry', files: [file], dependencies: { minecraft: '1.21.1' } }) }));
+    let attempts = 0;
+    global.fetch = async () => ++attempts === 1 ? new Response('', { status: 503 }) : new Response(bytes);
+    const result = await createModpackInstaller({ userData: temp }).install({ path: archive });
+    assert.equal(attempts, 2);
+    assert.equal(await fs.readFile(path.join(result.folder, file.path), 'utf8'), 'retry mod');
+  } finally { global.fetch = oldFetch; await fs.rm(temp, { recursive: true, force: true }); }
+});

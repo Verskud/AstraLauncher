@@ -108,9 +108,13 @@ function modpackProgressView(progress) {
   if (!status) return;
   const total = Math.max(0, Number(progress.total || 0));
   const done = Math.max(0, Number(progress.completed || 0));
-  status.textContent = `${done} из ${total} файлов · ${progress.message || 'Устанавливаем…'}`;
+  const received = Math.max(0, Number(progress.receivedBytes || 0));
+  const bytesTotal = Math.max(0, Number(progress.totalBytes || 0));
+  const mb = bytes => `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
+  const transfer = progress.receivedBytes !== undefined ? `${mb(received)}${bytesTotal ? ' / ' + mb(bytesTotal) : ''}${progress.bytesPerSecond ? ' · ' + mb(progress.bytesPerSecond) + '/с' : ''}` : '';
+  status.textContent = [total ? `${done} из ${total} файлов` : '', transfer, progress.message || 'Устанавливаем…'].filter(Boolean).join(' · ');
   const bar = $('#modpack-progress-bar');
-  if (bar) bar.style.width = `${total ? Math.round(done / total * 100) : 0}%`;
+  if (bar) bar.style.width = `${progress.phase === 'archive' && bytesTotal ? Math.min(100, Math.round(received / bytesTotal * 100)) : total ? Math.round(done / total * 100) : 0}%`;
 }
 window.astraDesktop.onModpackProgress(modpackProgressView);
 async function installModpack(run) {

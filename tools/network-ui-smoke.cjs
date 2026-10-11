@@ -45,7 +45,15 @@ async function run(){
  await page.evaluate(()=>{state.theme='ocean';render();});await page.locator('[data-action=notifications]').click();const colors=await page.evaluate(()=>{const probe=document.createElement('span');probe.style.color='var(--purple)';document.body.append(probe);const result={actual:getComputedStyle(document.querySelector('.modal-mark')).color,expected:getComputedStyle(probe).color};probe.remove();return result;});assert.equal(colors.actual,colors.expected);await page.locator('#modal').evaluate(element=>element.close());
  for(const locale of ['ru','en','de','fr','es','ko','ja','zh-CN','zh-TW','ar','de-CH','nb']){const gaps=await page.evaluate(locale=>{state.language=locale;render();return [...instanceKeys.filter(key=>instanceText(key)===key),...accountKeys.filter(key=>accountText(key)===key)];},locale);assert.deepEqual(gaps,[]);}
  await page.evaluate(()=>{state.language='ru';go('servers');});await page.locator('[data-server-remove]').click();await page.locator('[data-server-confirm-remove]').click();assert.equal(await page.locator('.server-card').count(),0);
- assert.deepEqual(errors,[]);console.log('UI OK: server CRUD, escaped MOTD, skin front/back, install, 12 languages, 900×560 layout.');
+ await page.evaluate(()=>{
+  modpackPending=true;
+  showModal('<p id="modpack-status"></p><div id="modpack-progress-bar"></div>');
+  modpackProgressView({phase:'archive',receivedBytes:5242880,totalBytes:10485760,bytesPerSecond:1048576,message:'pack.mrpack'});
+ });
+ const archiveStatus=await page.locator('#modpack-status').innerText();assert.match(archiveStatus,/5\.0 МБ \/ 10\.0 МБ/);assert.match(archiveStatus,/1\.0 МБ\/с/);assert.doesNotMatch(archiveStatus,/0 из 0/);assert.equal(await page.locator('#modpack-progress-bar').evaluate(element=>element.style.width),'50%');
+ await page.evaluate(()=>{modpackProgressView({phase:'resolving',message:'Получаем список файлов…'});});assert.doesNotMatch(await page.locator('#modpack-status').innerText(),/0 из 0/);
+ await page.evaluate(()=>{modpackPending=false;modal.close();});
+ assert.deepEqual(errors,[]);console.log('UI OK: server CRUD, escaped MOTD, skin front/back, install, 12 languages, 900×560 layout, archive progress and speed.');
  }finally{await browser.close();}
 }
 run().catch(error=>{console.error(error);process.exitCode=1;});

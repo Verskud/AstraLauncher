@@ -191,10 +191,23 @@ if (!app.requestSingleInstanceLock()) {
     } });
     guarded('modpack:catalog-install', async request => {
       if (request?.source !== 'modrinth' || !/^[a-zA-Z0-9_-]{1,64}$/.test(request?.id || '')) throw new Error('Установка сборок из CurseForge пока не поддерживается.');
-      return modpacks.install(async signal => {
-        const resolved = await download.resolveModrinth({ source: 'modrinth', kind: 'modpacks', id: request.id }, signal);
-        const bytes = await download.fetchResolved(resolved, signal);
-        return { bytes, catalog: true };
+      return modpacks.install(async (signal, report, staging) => {
+        report({ phase: 'resolving', message: 'Получаем список файлов сборки из Modrinth…' });
+        const resolveSignal = AbortSignal.any([signal, AbortSignal.timeout(30000)]);
+        const resolved = await download.resolveModrinth({ source: 'modrinth', kind: 'modpacks', id: request.id }, resolveSignal).catch(error => {
+          if (!signal.aborted && resolveSignal.aborted) throw new Error('Modrinth не ответил на запрос сборки за 30 секунд. Повтори попытку.');
+          throw error;
+        });
+        const filename = path.join(staging, 'pack.mrpack');
+        const started = Date.now();
+        let lastReport = 0;
+        await download.fetchResolvedToFile(resolved, filename, signal, (receivedBytes, totalBytes) => {
+          if (receivedBytes && receivedBytes !== totalBytes && Date.now() - lastReport < 200) return;
+          lastReport = Date.now();
+          report({ phase: 'archive', receivedBytes, totalBytes, bytesPerSecond: receivedBytes / Math.max(1, (Date.now() - started) / 1000), message: resolved.filename });
+        }, attempt => report({ phase: 'resolving', message: `Сеть прервала загрузку архива. Повторная попытка ${attempt} из 3…` }));
+        report({ phase: 'checking', message: 'Проверяем архив сборки…' });
+        return { path: filename, temporary: true, catalog: true };
       });
     });
     guarded('modpack:local-import', async () => {

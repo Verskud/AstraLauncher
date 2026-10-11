@@ -4,7 +4,7 @@ async function withDownloadResponse(url, options, consume, { idleTimeoutMs = 600
   let timer;
   const touch = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => controller.abort(Object.assign(new Error('Сервер загрузки не передаёт данные больше минуты. Повтори попытку.'), { name: 'TimeoutError' })), idleTimeoutMs);
+    timer = setTimeout(() => controller.abort(Object.assign(new Error(`Сервер загрузки не передаёт данные больше ${Math.ceil(idleTimeoutMs / 1000)} с. Повтори попытку.`), { name: 'TimeoutError' })), idleTimeoutMs);
     timer.unref?.();
   };
   touch();
