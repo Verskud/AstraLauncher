@@ -3,6 +3,9 @@ let minecraftManifest = null;
 let versionRequest = null;
 const profileLoaders = ['Vanilla', 'Fabric', 'Forge', 'NeoForge', 'Quilt'];
 function loaderAvailable(version, name) {
+  if (name === 'Fabric' || name === 'Quilt' || name === 'NeoForge') {
+    if (/^\d{2}\.\d+(?:\.\d+)?$/.test(version)) return Number(version.split('.')[0]) >= 26;
+  }
   const match = /^1\.(\d+)(?:\.(\d+))?$/.exec(version);
   if (name === 'Fabric' || name === 'Quilt') return !!match && Number(match[1]) >= 14;
   if (name === 'NeoForge') return !!match && (Number(match[1]) > 20 || Number(match[1]) === 20 && Number(match[2] || 0) >= 2);
