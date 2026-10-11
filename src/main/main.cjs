@@ -1,3 +1,5 @@
+const { protectProcessOutput, routeConsoleToFile } = require('./process-output.cjs');
+protectProcessOutput();
 const { app, BrowserWindow, Menu, ipcMain, session, shell, dialog } = require('electron');
 const path = require('node:path');
 const os = require('node:os');
@@ -22,6 +24,7 @@ let windowTheme = null;
 
 app.setName('AstraLauncher');
 app.setAppUserModelId(APP_ID);
+routeConsoleToFile(path.join(app.getPath('userData'), 'launcher.log'));
 
 function trustedSender(event) {
   return mainWindow && event.sender === mainWindow.webContents &&

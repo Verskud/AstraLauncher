@@ -1,6 +1,6 @@
-# ASTRA Launcher 0.9.9
+# ASTRA Launcher 0.9.10
 
-Предварительная версия лаунчера Minecraft Java Edition для Windows x64. Готовый файл: `release/AstraLauncher-0.9.9.exe`.
+Предварительная версия лаунчера Minecraft Java Edition для Windows x64. Готовый файл: `release/AstraLauncher-0.9.10.exe`.
 
 ## Что работает
 

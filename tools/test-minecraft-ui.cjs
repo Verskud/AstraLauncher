@@ -1,3 +1,5 @@
+const { protectProcessOutput, routeConsoleToFile } = require('../src/main/process-output.cjs');
+protectProcessOutput();
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -5,12 +7,17 @@ const path = require('node:path');
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'astra-ui-test-'));
 app.setPath('userData', profile);
+routeConsoleToFile(path.join(profile, 'test.log'));
 let installed = false;
 let window;
 let stopCancelInstall;
 let launchedProfile;
 ipcMain.handle('versions:list', () => require('../src/main/data/minecraft-versions.json'));
 ipcMain.handle('integrations:status', () => ({ curseforgeReady: false, microsoftClientId: '', microsoftAccount: '' }));
+ipcMain.handle('modpack:recover', () => []);
+ipcMain.handle('catalog:list-installed', () => []);
+ipcMain.handle('game:status', () => ({ running: false }));
+ipcMain.handle('world-backups:list', () => []);
 ipcMain.handle('minecraft:status', (_event, version) => ({ version, phase: installed && version === '1.21.1' ? 'done' : 'idle', installed: installed && version === '1.21.1' }));
 ipcMain.handle('minecraft:install', async (_event, version) => {
   window.webContents.send('minecraft:progress', { version, phase: 'downloading', done: 1, total: 2 });

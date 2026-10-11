@@ -1,3 +1,5 @@
+const { protectProcessOutput, routeConsoleToFile } = require('../src/main/process-output.cjs');
+protectProcessOutput();
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -8,9 +10,15 @@ const appRoot = packed ? path.join(__dirname, '../release/win-unpacked/resources
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'astra-personalization-'));
 if (!path.resolve(tempRoot).startsWith(path.resolve(os.tmpdir()) + path.sep)) throw new Error('Unsafe test profile path');
 app.setPath('userData', tempRoot);
+routeConsoleToFile(path.join(tempRoot, 'test.log'));
 ipcMain.handle('integrations:status', () => ({ curseforgeReady: false, microsoftClientId: '', microsoftAccount: '' }));
 ipcMain.handle('catalog:search', () => ({ total: 0, items: [] }));
 ipcMain.handle('versions:list', () => ({ ...require('../src/main/data/minecraft-versions.json'), source: 'bundled' }));
+ipcMain.handle('modpack:recover', () => []);
+ipcMain.handle('catalog:list-installed', () => []);
+ipcMain.handle('game:status', () => ({ running: false }));
+ipcMain.handle('minecraft:status', (_event, version) => ({ version, phase: 'idle', installed: false }));
+ipcMain.handle('world-backups:list', () => []);
 
 async function run() {
   await app.whenReady();
