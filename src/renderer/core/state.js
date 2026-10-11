@@ -10,8 +10,8 @@ function installedRecordsForPack(pack, kind) {
   if (!files) return [...new Map(history.filter(item => typeof item.path === 'string').reverse().map(item => [item.path.toLowerCase(), item])).values()];
   return files.filter(file => file.kind === kind).map(file => {
     const saved = history.find(item => typeof item.path === 'string' && item.path.toLowerCase() === file.path.toLowerCase());
-    const name = file.filename.replace(/^\d+-/, '').replace(/^(modrinth|curseforge)-[^-]+-/, '').replace(/\.(jar|zip)$/i, '').replaceAll('_', ' ');
-    return { ...file, ...saved, path: file.path, filename: file.filename, name: saved?.name && !/^[A-Za-z0-9]{8}$/.test(saved.name) ? saved.name : name, source: saved?.source || 'Файл сборки' };
+    const name = file.filename.replace(/^\d+-/, '').replace(/^(modrinth|curseforge)-[^-]+-/, '').replace(/\.(jar|zip)(?:\.disabled)?$/i, '').replaceAll('_', ' ');
+    return { ...file, ...saved, path: file.path, filename: file.filename, disabled:file.disabled===true, name: saved?.name && !/^[A-Za-z0-9]{8}$/.test(saved.name) ? saved.name : name, source: saved?.source || 'Файл сборки' };
   }).sort((a,b) => a.filename.localeCompare(b.filename));
 }
 async function refreshInstalled(profileId) {

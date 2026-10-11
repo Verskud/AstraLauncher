@@ -19,7 +19,7 @@ async function readAt(file, length, position) {
   return buffer;
 }
 
-async function openZip(filename) {
+async function openZip(filename, { maxEntry = MAX_ENTRY, maxTotal = MAX_TOTAL } = {}) {
   const file = await fs.open(filename, 'r');
   try {
     const { size } = await file.stat();
@@ -43,7 +43,7 @@ async function openZip(filename) {
       const packed = directory.readUInt32LE(offset + 20), unpacked = directory.readUInt32LE(offset + 24);
       const nameLength = directory.readUInt16LE(offset + 28), extraLength = directory.readUInt16LE(offset + 30), commentLength = directory.readUInt16LE(offset + 32);
       const end = offset + 46 + nameLength + extraLength + commentLength;
-      if (end > directory.length || flags & 1 || ![0, 8].includes(method) || packed === 0xffffffff || unpacked === 0xffffffff || unpacked > MAX_ENTRY || (packed && unpacked / packed > 1000)) throw new Error('Архив содержит неподдерживаемый или слишком большой файл.');
+      if (end > directory.length || flags & 1 || ![0, 8].includes(method) || packed === 0xffffffff || unpacked === 0xffffffff || unpacked > maxEntry || (packed && unpacked / packed > 1000)) throw new Error('Архив содержит неподдерживаемый или слишком большой файл.');
       const name = directory.subarray(offset + 46, offset + 46 + nameLength).toString('utf8');
       const normalized = safePath(name);
       const mode = directory.readUInt32LE(offset + 38) >>> 16;
@@ -52,7 +52,7 @@ async function openZip(filename) {
       if (entries.has(key)) throw new Error('В архиве повторяется путь к файлу.');
       const isDirectory = name.endsWith('/');
       if (!isDirectory) total += unpacked;
-      if (total > MAX_TOTAL) throw new Error('Архив слишком большой.');
+      if (total > maxTotal) throw new Error('Архив слишком большой.');
       entries.set(key, { name: normalized, isDirectory, flags, method, packed, unpacked, crc: directory.readUInt32LE(offset + 16), position: directory.readUInt32LE(offset + 42) });
       offset = end;
     }
@@ -66,7 +66,7 @@ async function openZip(filename) {
         const start = entry.position + 30 + local.readUInt16LE(26) + local.readUInt16LE(28);
         if (start + entry.packed > directoryOffset) throw new Error('Повреждённый ZIP архив.');
         const compressed = await readAt(file, entry.packed, start);
-        const bytes = entry.method === 8 ? zlib.inflateRawSync(compressed, { maxOutputLength: MAX_ENTRY }) : compressed;
+        const bytes = entry.method === 8 ? zlib.inflateRawSync(compressed, { maxOutputLength: maxEntry }) : compressed;
         if (bytes.length !== entry.unpacked || crc32(bytes) !== entry.crc) throw new Error(`Повреждён файл ${entry.name} в архиве.`);
         return bytes;
       },

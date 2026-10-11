@@ -7,11 +7,14 @@ async function run(){
  const originalLoad=Module._load;
  Module._load=function(name,...args){if(name==='electron')return{app:{getPath:()=>root},shell:{},safeStorage:{}};return originalLoad.call(this,name,...args);};
  const download=require('../src/main/download.cjs');Module._load=originalLoad;
+ const {createInstanceTools}=require('../src/main/instance-tools.cjs');
  const skins=createPlayerSkins(root,{download:request=>download.download(request)});
  await skins.setSource('ely','classic');const appearance=await skins.remote('ErickSkrauch');assert.ok(appearance.skin?.startsWith('data:image/png;base64,'));
  const profile={id:'00000000-0000-0000-0000-000000000001',loader:'Fabric',version:'1.21.1'};
  const result=await skins.install(profile,'Player');assert.equal(result.profileId,profile.id);assert.equal(result.kind,'mods');assert.ok(result.path.startsWith(path.join(root,'instances',profile.id,'mods')+path.sep));
  await fs.access(result.path);console.log('Official Ely.by skin and Modrinth installation OK:',result.filename);
+ const updates=await createInstanceTools(root).checkUpdates(profile);assert.equal(updates.checked,1);assert.equal(updates.unmatched,0);console.log('Official Modrinth hash update API OK.');
+ const agent=await require('../src/main/ely-account.cjs').injector(root);assert.ok((await fs.stat(agent)).size>1000);console.log('Official authlib-injector download and checksum OK.');
  }finally{if(!path.resolve(root).startsWith(workspace+path.sep))throw new Error('Unsafe temporary path');await fs.rm(root,{recursive:true,force:true});}
 }
 run().catch(error=>{console.error(error.message);process.exitCode=1;});

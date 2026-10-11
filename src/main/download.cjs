@@ -32,7 +32,7 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.15' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.16' };
   if (key) headers['x-api-key'] = key;
   return withDownloadResponse(url, { headers, signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
@@ -137,7 +137,8 @@ async function downloadModrinthMod(request) {
       await collect(id, dependency.version_id, choice.metadata, depth + 1);
     }
   }
-  await collect(request.id, null, null, 0);
+  if (request.versionId && !/^[a-zA-Z0-9_-]{1,64}$/.test(request.versionId)) throw new Error('Некорректная версия мода.');
+  await collect(request.id, request.versionId || null, null, 0);
   const replaced = [...planned.keys()];
   const kept = existing.filter(entry => !replaced.some(id => isProjectFile(entry.name, id)));
   if (fabric) checkFabricCompatibility([...kept, ...[...planned.values()].map(item => ({ metadata: item.metadata }))]);
@@ -235,8 +236,8 @@ async function listInstalled(profileId) {
     try { entries = await fs.readdir(path.join(root, folder), { withFileTypes: true }); }
     catch (error) { if (error.code === 'ENOENT') continue; throw error; }
     for (const entry of entries.slice(0, 1000)) {
-      if (!entry.isFile() || !/\.(jar|zip)$/i.test(entry.name)) continue;
-      results.push({ path: path.join(root, folder, entry.name), filename: entry.name, kind, profileId });
+      if (!entry.isFile() || !(kind === 'mods' ? /\.jar(?:\.disabled)?$/i : /\.(jar|zip)$/i).test(entry.name)) continue;
+      results.push({ path: path.join(root, folder, entry.name), filename: entry.name, kind, profileId, disabled: /\.disabled$/i.test(entry.name) });
     }
   }
   return results;

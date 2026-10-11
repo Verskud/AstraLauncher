@@ -16,6 +16,8 @@ const { createModpackInstaller } = require('./modpack.cjs');
 const customFont = require('./custom-font.cjs');
 const { createServerMonitor, parseAddress } = require('./server-status.cjs');
 const { createPlayerSkins } = require('./player-skins.cjs');
+const { createInstanceTools } = require('./instance-tools.cjs');
+const ely = require('./ely-account.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
@@ -122,13 +124,33 @@ if (!app.requestSingleInstanceLock()) {
       throw new Error('Неизвестный источник каталога.');
     });
     guarded('integrations:status', () => preferences.status());
+    guarded('ely:status', () => ely.current().status());
+    guarded('ely:sign-in', value => ely.current().signIn(value));
+    guarded('ely:disconnect', () => ely.current().disconnect());
+    guarded('ely:cancel', () => ely.current().cancel());
+    guarded('ely:manage', () => shell.openExternal('https://ely.by/skins'));
     const checkServer = createServerMonitor();
+    const instances = createInstanceTools(app.getPath('userData'), { download: request => download.download(request), nativeImage: require('electron').nativeImage });
+    const editableInstance = () => { if (launchPending || game.status().running || skinInstallPending || instances.isBusy()) throw new Error('Дождись завершения операции и закрой игру перед изменением сборки.'); };
     let skinInstallPending = false;
     const skins = createPlayerSkins(app.getPath('userData'), { download: request => download.download(request), decodePng: bytes => !require('electron').nativeImage.createFromBuffer(bytes).isEmpty() });
     guarded('servers:validate', value => parseAddress(value));
     guarded('servers:status', value => checkServer(value));
+    guarded('instances:toggle-mod', (id,name) => { editableInstance();return instances.toggle(id,name); });
+    guarded('instances:clone', (profile,name,worlds) => { editableInstance();return instances.clone(profile,name,worlds===true); });
+    guarded('instances:updates', profile => instances.checkUpdates(profile));
+    guarded('instances:update-mod', (profile,choice) => { editableInstance();return instances.update(profile,choice); });
+    guarded('instances:export', async (profile,worlds) => {
+      editableInstance();
+      const result = await dialog.showSaveDialog(mainWindow,{title:'Экспорт сборки ASTRA',defaultPath:`${String(profile?.name||'ASTRA').replace(/[<>:"/\\|?*]/g,'_')}.zip`,filters:[{name:'ASTRA ZIP',extensions:['zip']}]});
+      return result.canceled || !result.filePath ? null : instances.exportZip(profile,result.filePath,worlds===true);
+    });
+    guarded('instances:screenshots', id => instances.screenshots(id));
+    guarded('instances:thumbnail', (id,name) => instances.thumbnail(id,name));
+    guarded('instances:open-screenshot', async (id,name) => { const error=await shell.openPath(await instances.screenshotFile(id,name));if(error)throw new Error(error); });
+    guarded('instances:screenshots-folder', async id => { const folder=path.join(require('./game-loader.cjs').instanceFolder(app.getPath('userData'),id),'screenshots');await require('node:fs/promises').mkdir(folder,{recursive:true});const error=await shell.openPath(folder);if(error)throw new Error(error); });
     guarded('skins:status', () => skins.status());
-    guarded('skins:preview', name => skins.remote(name));
+    guarded('skins:preview', (name,source) => skins.remote(name,source));
     guarded('skins:source', (source,model) => skins.setSource(source,model));
     guarded('skins:remove', kind => skins.removeTexture(kind));
     guarded('skins:select', async kind => {
@@ -138,6 +160,7 @@ if (!app.requestSingleInstanceLock()) {
     });
     guarded('skins:install', async (profile,name) => {
       if (skinInstallPending) throw new Error('Поддержка скинов уже устанавливается.');
+      if (instances.isBusy()) throw new Error('Дождись завершения операции со сборкой.');
       if (launchPending || game.status().running) throw new Error('Закрой игру перед изменением скинов сборки.');
       skinInstallPending = true;
       try { return await skins.install(profile,name); }
@@ -162,7 +185,7 @@ if (!app.requestSingleInstanceLock()) {
       if (url.protocol !== 'https:' || !['modrinth.com','www.curseforge.com'].includes(url.hostname)) throw new Error('Открывать можно только страницы Modrinth и CurseForge.');
       await shell.openExternal(url.href);
     });
-    guarded('catalog:download', request => download.download(request));
+    guarded('catalog:download', request => { if(request?.profileId)editableInstance();return download.download(request); });
     const modpacks = createModpackInstaller({ userData: app.getPath('userData'), onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('modpack:progress', progress);
     } });
@@ -175,15 +198,16 @@ if (!app.requestSingleInstanceLock()) {
       });
     });
     guarded('modpack:local-import', async () => {
-      const result = await dialog.showOpenDialog(mainWindow, { title: 'Выбери сборку Modrinth', properties: ['openFile'], filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }] });
+      const result = await dialog.showOpenDialog(mainWindow, { title: 'Выбери сборку', properties: ['openFile'], filters: [{ name: 'Modrinth / ASTRA ZIP', extensions: ['mrpack','zip'] }] });
       if (result.canceled || !result.filePaths[0]) return null;
+      if (/\.zip$/i.test(result.filePaths[0])) { editableInstance();return {profile:await instances.importZip(result.filePaths[0])}; }
       return modpacks.install({ path: result.filePaths[0] });
     });
     guarded('modpack:cancel', () => modpacks.cancel());
     guarded('modpack:recover', () => modpacks.recover());
     guarded('catalog:show-file', value => download.showFile(value));
     guarded('catalog:open-downloads', () => download.openFolder());
-    guarded('catalog:remove-installed', (file, profileId) => download.removeInstalled(file, profileId));
+    guarded('catalog:remove-installed', (file, profileId) => { editableInstance();return download.removeInstalled(file, profileId); });
     guarded('catalog:list-installed', profileId => download.listInstalled(profileId));
     guarded('game:open-worlds-folder', profileId => download.openWorldsFolder(profileId));
     guarded('game:open-instance-folder', async profileId => {
@@ -194,6 +218,7 @@ if (!app.requestSingleInstanceLock()) {
       return true;
     });
     guarded('game:remove-instance', async profileId => {
+      if (instances.isBusy() || skinInstallPending || launchPending) throw new Error('Дождись завершения операции со сборкой.');
       const folder = require('./game-loader.cjs').instanceFolder(app.getPath('userData'), profileId);
       if (game.status().running && game.status().profileId === profileId) throw new Error('Закрой игру перед удалением сборки.');
       await require('node:fs/promises').rm(folder, { recursive: true, force: true });
@@ -220,6 +245,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('minecraft:status', version => installer.status(version));
     guarded('minecraft:cancel', () => installer.cancel());
     guarded('game:launch', async profile => {
+      if (instances.isBusy()) throw new Error('Дождись завершения операции со сборкой.');
       if (skinInstallPending) throw new Error('Дождись установки поддержки скинов.');
       if (launchPending || game.status().running) throw new Error('Игра уже запускается или запущена.');
       if (profile?.autoBackup === true) {
@@ -228,7 +254,8 @@ if (!app.requestSingleInstanceLock()) {
       }
       launchPending = profile.id;
       try {
-        await skins.prepare(profile, profile.accountMode === 'microsoft' ? preferences.status().microsoftAccount : profile.playerName || 'Player');
+        const skinName = profile.accountMode === 'ely' ? (await ely.current().status()).name : profile.accountMode === 'microsoft' ? preferences.status().microsoftAccount : profile.playerName || 'Player';
+        await skins.prepare(profile,skinName,profile.accountMode === 'ely' ? 'mojang' : undefined);
         return await game.launch(profile, {
           userData: app.getPath('userData'), minecraftRoot: path.join(app.getPath('userData'), 'minecraft'),
           onProgress: progress => {

@@ -37,8 +37,9 @@ function createPlayerSkins(root, { download, decodePng } = {}) {
     if (!['local','ely','mojang'].includes(source) || !['classic','slim'].includes(model)) throw new Error('Некорректный источник или модель скина.');
     return store({source,model});
   }
-  async function remote(name) {
+  async function remote(name,sourceOverride) {
     playerName(name); const config = await selection();
+    if (sourceOverride !== undefined) { if (!['ely','mojang','local'].includes(sourceOverride)) throw new Error('Неизвестный источник скина.'); config.source=sourceOverride; }
     if (config.source === 'local') return status();
     const get = async (url, json=false, redirects=0) => {
       const target = new URL(url);
@@ -57,7 +58,10 @@ function createPlayerSkins(root, { download, decodePng } = {}) {
       const bytes=Buffer.concat(chunks); return json ? JSON.parse(bytes.toString('utf8')) : bytes;
     };
     let urls;
-    if (config.source === 'ely') urls={skin:`https://skinsystem.ely.by/skins/${name}.png`,cape:`https://skinsystem.ely.by/cloaks/${name}.png`};
+    if (config.source === 'ely') {
+      urls={skin:`https://skinsystem.ely.by/skins/${name}.png`,cape:`https://skinsystem.ely.by/cloaks/${name}.png`};
+      if (sourceOverride === 'ely') { const textures=await get(`https://skinsystem.ely.by/textures/${name}`,true);config.model=textures?.SKIN?.metadata?.model==='slim'?'slim':'classic'; }
+    }
     else {
       const profile=await get(`https://api.mojang.com/users/profiles/minecraft/${name}`,true);
       if(!profile || !/^[a-f\d]{32}$/i.test(profile.id))return {...config,skin:null,cape:null};
@@ -77,11 +81,12 @@ function createPlayerSkins(root, { download, decodePng } = {}) {
     }));
     return result;
   }
-  async function prepare(profile,name) {
+  async function prepare(profile,name,sourceOverride) {
     const instance=instanceFolder(root,profile.id), marker=path.join(instance,'astra-skins.json');
     try { await fs.access(marker); } catch(error) { if(error.code==='ENOENT')return;throw error; }
     playerName(name);
     const config=await selection(), directory=path.join(instance,'CustomSkinLoader'), filename=path.join(directory,'CustomSkinLoader.json');
+    if (sourceOverride) config.source=sourceOverride;
     await fs.mkdir(directory,{recursive:true});
     let previous={};
     try { previous=JSON.parse(await fs.readFile(filename,'utf8')); } catch(error) { if(error.code!=='ENOENT')throw new Error('Не удалось прочитать настройки CustomSkinLoader. Исправь JSON в папке сборки.'); }

@@ -126,9 +126,15 @@ async function launch(profile, context) {
     if (jar) { await fs.access(jar); classpath.push(jar); }
   }
   if (!['Forge','NeoForge'].includes(profile.loader) || loader?.minecraftArguments) classpath.push(relativePath(minecraftRoot, `versions/${profile.version}/${profile.version}.jar`));
-  const account = profile.accountMode === 'microsoft' ? await microsoft.minecraftAccount() : offlineAccount(profile.playerName || 'Player');
+  const account = profile.accountMode === 'microsoft' ? await microsoft.minecraftAccount() : profile.accountMode === 'ely' ? await require('./ely-account.cjs').current().account() : offlineAccount(profile.playerName || 'Player');
+  const extraJvm = [];
+  if (profile.accountMode === 'ely') {
+    if (/^1\.[0-6](?:\.|$)/.test(profile.version) || ['1.7','1.7.1'].includes(profile.version) || metadata.type === 'old_alpha' || metadata.type === 'old_beta') throw new Error('Вход Ely.by поддерживается начиная с Minecraft 1.7.2.');
+    onProgress({phase:'loader',message:'Подготавливаем авторизацию Ely.by…'});
+    extraJvm.push(`-javaagent:${await require('./ely-account.cjs').injector(minecraftRoot)}=ely.by`);
+  }
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.15',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '0.9.16',
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,
@@ -151,13 +157,13 @@ async function launch(profile, context) {
   const mainClass = loader?.mainClass || metadata.mainClass;
   if (!/^[\w.$]+$/.test(mainClass)) throw new Error('Некорректный главный класс Minecraft.');
   const memory = Number(profile.memory);
-  const params = [`-Xmx${Number.isInteger(memory) && memory >= 2 && memory <= 32 ? memory : 4}G`, ...jvm, mainClass, ...game];
+  const params = [`-Xmx${Number.isInteger(memory) && memory >= 2 && memory <= 32 ? memory : 4}G`, ...extraJvm, ...jvm, mainClass, ...game];
   onProgress({ phase: 'starting', message: `Запускаем ${profile.name || 'Minecraft'}…` });
   const javaw = path.join(path.dirname(java), 'javaw.exe');
   const executable = await fs.access(javaw).then(() => javaw, () => java);
   const child = spawn(executable, params, { cwd: directory, windowsHide: false, stdio: ['ignore', 'pipe', 'pipe'] });
   running = { child, id: profile.id, log: '' };
-  for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { if (running?.child === child) running.log = (running.log + chunk.toString()).slice(-8000); });
+  for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { if (running?.child === child) { const text=running.log+chunk.toString();running.log=(account.token.length>20?text.replaceAll(account.token,'[token]'):text).slice(-8000); } });
   const launchLog = path.join(directory, 'astra-launch.log');
   child.on('error', async error => { if (running?.child === child) { await fs.writeFile(launchLog, `${running.log}\n${error.message}`, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: 'error', message: `${error.message} Журнал: ${launchLog}` }); } });
   child.on('close', async code => { if (running?.child === child) { await fs.writeFile(launchLog, running.log, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: code === 0 ? 'closed' : 'error', message: code === 0 ? 'Игра закрыта.' : `Игра завершилась с кодом ${code}. Журнал: ${launchLog}` }); } });
