@@ -3,6 +3,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { openZip, safePath } = require('./zip-reader.cjs');
 const { loaderAvailable } = require('./game-loader.cjs');
+const { withDownloadResponse } = require('./download-response.cjs');
 
 const allowedSources = new Set(['cdn.modrinth.com', 'github.com', 'raw.githubusercontent.com', 'gitlab.com']);
 const loaderKeys = { 'fabric-loader': 'Fabric', 'quilt-loader': 'Quilt', forge: 'Forge', neoforge: 'NeoForge' };
@@ -53,23 +54,27 @@ function checkedUrl(value, first) {
 async function fetchFile(url, expectedSize, signal) {
   let address = checkedUrl(url, true);
   for (let redirect = 0; redirect <= 5; redirect++) {
-    const response = await fetch(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.12' } });
+    const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/0.9.13' } }, async (response, touch) => {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
+      await response.body?.cancel();
       if (redirect === 5) throw new Error('Слишком много перенаправлений при загрузке.');
-      address = checkedUrl(new URL(response.headers.get('location') || '', address).href, false);
-      continue;
+      return { redirect: checkedUrl(new URL(response.headers.get('location') || '', address).href, false) };
     }
     if (!response.ok) throw new Error(`Сервер файла ответил кодом ${response.status}.`);
     if (Number(response.headers.get('content-length') || 0) > expectedSize) throw new Error('Размер файла сборки не совпал.');
     const chunks = []; let size = 0;
     for await (const chunk of response.body) {
+      touch();
       size += chunk.length;
-      if (size > expectedSize) { await response.body.cancel().catch(() => {}); throw new Error('Размер файла сборки не совпал.'); }
+      if (size > expectedSize) throw new Error('Размер файла сборки не совпал.');
       chunks.push(chunk);
     }
     const bytes = Buffer.concat(chunks);
     if (bytes.length !== expectedSize) throw new Error('Файл сборки скачался не полностью.');
-    return bytes;
+    return { bytes };
+    });
+    if (result.redirect) { address = result.redirect; continue; }
+    return result.bytes;
   }
 }
 

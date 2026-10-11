@@ -7,13 +7,15 @@ const { instanceFolder } = require('./game-loader.cjs');
 const { hashFile } = require('./game-files.cjs');
 const { fabricMetadata, matchesVersion, checkFabricCompatibility } = require('./mod-compat.cjs');
 const MAX_DOWNLOAD_SIZE = 1024 * 1024 * 1024;
+const { withDownloadResponse } = require('./download-response.cjs');
 
-async function readResponseBytes(response, limit = MAX_DOWNLOAD_SIZE) {
+async function readResponseBytes(response, limit = MAX_DOWNLOAD_SIZE, touch = () => {}) {
   const declaredSize = Number(response.headers.get('content-length') || 0);
   if (Number.isFinite(declaredSize) && declaredSize > limit) throw new Error('Файл превышает допустимый размер загрузки.');
   const chunks = [];
   let size = 0;
   for await (const chunk of response.body) {
+    touch();
     size += chunk.length;
     if (size > limit) throw new Error('Файл превышает допустимый размер загрузки.');
     chunks.push(Buffer.from(chunk));
@@ -30,11 +32,12 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.12' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.13' };
   if (key) headers['x-api-key'] = key;
-  const response = await fetch(url, { headers, signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20000)]) : AbortSignal.timeout(20000) });
+  return withDownloadResponse(url, { headers, signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
-  return response.json();
+  return JSON.parse((await readResponseBytes(response, 20_000_000, touch)).toString('utf8'));
+  });
 }
 
 async function resolveModrinth(request, signal) {
@@ -56,12 +59,13 @@ async function resolveModrinth(request, signal) {
 }
 
 async function fetchResolved(resolved, signal) {
-  const response = await fetch(resolved.url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120000)]) : AbortSignal.timeout(120000) });
+  return withDownloadResponse(resolved.url, { signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Не удалось скачать файл: ${response.status}.`);
-  const bytes = await readResponseBytes(response);
+  const bytes = await readResponseBytes(response, MAX_DOWNLOAD_SIZE, touch);
   if (resolved.sha512 && crypto.createHash('sha512').update(bytes).digest('hex') !== resolved.sha512) throw new Error('Контрольная сумма файла не совпала.');
   if (resolved.sha1 && crypto.createHash('sha1').update(bytes).digest('hex') !== resolved.sha1) throw new Error('Контрольная сумма файла не совпала.');
   return bytes;
+  });
 }
 
 function modrinthFile(version) {

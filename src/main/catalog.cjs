@@ -1,4 +1,4 @@
-const USER_AGENT = 'AstraLauncher/0.9.12 (Windows desktop launcher)';
+const USER_AGENT = 'AstraLauncher/0.9.13 (Windows desktop launcher)';
 const kinds = { mods: 'mod', modpacks: 'modpack', shaders: 'shader', resources: 'resourcepack' };
 
 async function getJson(url, headers = {}) {

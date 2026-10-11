@@ -10,12 +10,13 @@ const HOSTS = new Set(['piston-meta.mojang.com', 'launchermeta.mojang.com', 'pis
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9._ -]{1,64}$/.test(id) && id !== '.' && id !== '..';
 const validSha = hash => typeof hash === 'string' && /^[a-f0-9]{40}$/i.test(hash);
 const abortError = () => Object.assign(new Error('Загрузка отменена.'), { name: 'AbortError' });
+const downloadAgent = new https.Agent({ keepAlive: true, maxSockets: 16, maxFreeSockets: 16 });
 
 function httpsRequest(value, { signal }, redirects = 0) {
   const url = officialUrl(value);
   return new Promise((resolve, reject) => {
     if (signal.aborted) return reject(abortError());
-    const request = https.get(url, { signal, timeout: 60000 }, response => {
+    const request = https.get(url, { signal, timeout: 60000, agent: downloadAgent }, response => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
         response.resume();
         if (redirects >= 5) return reject(new Error('Слишком много переадресаций Mojang.'));
@@ -226,7 +227,7 @@ function createInstaller({ root, requestImpl = httpsRequest, onProgress = () => 
           update({ done: job.state.done + 1 });
         }
       };
-      const workers = Array.from({ length: Math.min(4, unique.length) }, worker);
+      const workers = Array.from({ length: Math.min(12, unique.length) }, worker);
       try { await Promise.all(workers); }
       catch (error) { controller.abort(); await Promise.allSettled(workers); throw error; }
       if (signal.aborted) throw abortError();

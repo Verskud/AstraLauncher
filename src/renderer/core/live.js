@@ -8,7 +8,7 @@ let liveSerial = 0;
 let integrationStatus = { curseforgeReady: false, microsoftClientId: '', microsoftAccount: '' };
 let authTimer = null;
 const liveLabels = { mods: 'моды', modpacks: 'сборки', shaders: 'шейдеры', resources: 'ресурспаки' };
-const humanError = error => String(error?.message || 'Не удалось выполнить действие.').replace(/^Error invoking remote method '[^']+': Error: /, '');
+const humanError = error => String(error?.message || 'Не удалось выполнить действие.').replace(/^Error invoking remote method '[^']+': (?:\w*Error: )?/, '');
 
 async function refreshIntegrations() {
   try { integrationStatus = await window.astraDesktop.integrationsStatus(); }
