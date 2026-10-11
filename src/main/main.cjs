@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, ipcMain, session, shell, dialog } = require('electron');
 const path = require('node:path');
+const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const catalog = require('./catalog.cjs');
 const preferences = require('./preferences.cjs');
@@ -14,8 +15,10 @@ const { createModpackInstaller } = require('./modpack.cjs');
 const APP_ID = 'app.astralauncher.desktop';
 const TITLE_COLORS = Object.freeze({ dark:'#111113', graphite:'#202024', amethyst:'#17121f', ocean:'#0e1a23', forest:'#111b16', ember:'#211711', frost:'#121d25', rose:'#241820', copper:'#251b16', aurora:'#101e1d', slate:'#181d28', sand:'#242018' });
 const entry = path.join(__dirname, '../renderer/index.html');
+const supportsGlass = process.platform === 'win32' && Number(os.release().split('.')[2]) >= 22621;
 const entryUrl = pathToFileURL(entry).href;
 let mainWindow = null;
+let windowTheme = null;
 
 app.setName('AstraLauncher');
 app.setAppUserModelId(APP_ID);
@@ -27,6 +30,7 @@ function trustedSender(event) {
 }
 
 function createWindow() {
+  windowTheme = null;
   mainWindow = new BrowserWindow({
     title: 'AstraLauncher',
     width: 1180,
@@ -80,8 +84,15 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
     ipcMain.on('window:theme', (event, theme) => {
-      if (trustedSender(event) && Object.hasOwn(TITLE_COLORS, theme)) {
-        mainWindow.setTitleBarOverlay({ color: TITLE_COLORS[theme], symbolColor: '#f0f0f2' });
+      if (trustedSender(event) && (Object.hasOwn(TITLE_COLORS, theme) || theme === 'glass') && windowTheme !== theme) {
+        windowTheme = theme;
+        const glass = theme === 'glass' && supportsGlass;
+        mainWindow.setBackgroundColor(glass ? '#00000000' : theme === 'glass' ? '#171b29' : TITLE_COLORS[theme]);
+        if (supportsGlass) {
+          try { mainWindow.setBackgroundMaterial(glass ? 'acrylic' : 'none'); }
+          catch (error) { mainWindow.setBackgroundColor(theme === 'glass' ? '#171b29' : TITLE_COLORS[theme]); console.warn('Window backdrop unavailable:', error.message); }
+        }
+        mainWindow.setTitleBarOverlay({ color: glass ? '#00000000' : theme === 'glass' ? '#171b29' : TITLE_COLORS[theme], symbolColor: '#f0f0f2' });
       }
     });
     const guarded = (channel, handler) => ipcMain.handle(channel, (event, ...args) => {

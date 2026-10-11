@@ -17,6 +17,7 @@ const palettes = {
   aurora: { bg: '#101e1d', sidebar: '#162b29', panel: '#1d3532', accent: '#8fd9c2' },
   slate: { bg: '#181d28', sidebar: '#202838', panel: '#293348', accent: '#a9badc' },
   sand: { bg: '#242018', sidebar: '#302a1e', panel: '#3b3426', accent: '#dbc693' },
+  glass: { bg: '#151a2733', sidebar: '#1c223c66', panel: '#282f465c', accent: '#c6b4fb' },
 };
 const extraThemeIds = ['frost','rose','copper','aurora','slate','sand'];
 const extraThemeNames = {
@@ -142,8 +143,23 @@ for (const [lang, [java, microsoft, selected, select, local, official]] of Objec
   Object.assign(words[lang], { gameNote: java, integrationNote: microsoft, launchSelected: selected, launchSelect: select, localPlay: local, officialPlay: official });
 }
 const currentLanguage = () => languages.some(([code]) => code === state.language) ? state.language : 'ru';
+const appearanceOptionsCopy = {
+  ru:['Стекло','Плавные анимации','Мягкие переходы, появление окон и отклик карточек.'],
+  en:['Glass','Smooth animations','Gentle transitions, dialog animations and card feedback.'],
+  de:['Glas','Sanfte Animationen','Sanfte Übergänge, animierte Dialoge und Kartenreaktionen.'],
+  fr:['Verre','Animations fluides','Transitions douces, fenêtres animées et réactions des cartes.'],
+  es:['Cristal','Animaciones fluidas','Transiciones suaves, ventanas animadas y respuesta de las tarjetas.'],
+  ko:['유리','부드러운 애니메이션','부드러운 화면 전환, 대화상자와 카드 애니메이션.'],
+  ja:['ガラス','滑らかなアニメーション','画面の切り替え、ダイアログ、カードの動きを滑らかにします。'],
+  'zh-CN':['玻璃','流畅动画','柔和的页面过渡、对话框动画和卡片反馈。'],
+  'zh-TW':['玻璃','流暢動畫','柔和的頁面切換、對話框動畫與卡片回饋。'],
+  ar:['زجاج','حركات سلسة','انتقالات لطيفة وحركة للنوافذ واستجابة البطاقات.'],
+  'de-CH':['Glas','Sanfte Animationen','Sanfte Übergänge, animierte Dialoge und Kartenreaktionen.'],
+  nb:['Glass','Myke animasjoner','Myke overganger, animerte dialoger og respons fra kort.'],
+};
 const t = key => (words[currentLanguage()] || words.en)[key] || words.en[key] || words.ru[key] || key;
 const themeName = id => {
+  if (id === 'glass') return (appearanceOptionsCopy[currentLanguage()] || appearanceOptionsCopy.en)[0];
   const index = extraThemeIds.indexOf(id);
   return index < 0 ? t(id) : (extraThemeNames[currentLanguage()] || extraThemeNames.en)[index];
 };
@@ -201,13 +217,15 @@ settingsPage = function () {
     content += `<h2 class="integration-heading">${t('integrations')}</h2>${settingRow('CurseForge API',integrationStatus.curseforgeReady?t('keySaved'):t('keyMissing'),`<button class="button secondary" data-live-config="curseforge">${integrationStatus.curseforgeReady?t('changeKey'):t('addKey')}</button>`)}${settingRow('Microsoft Client ID',integrationStatus.microsoftClientId?esc(integrationStatus.microsoftClientId):t('clientHint'),`<button class="button secondary" data-live-config="microsoft">${integrationStatus.microsoftClientId?t('changeId'):t('addId')}</button>`)}<div class="quiet-note">${icon('info')} ${connectionNoteCopy[currentLanguage()] || connectionNoteCopy.ru}</div>`;
   } else if (settingsTab === 'appearance') {
     content = `<h2>${t('yourAstra')}</h2><p class="appearance-hint">${t('chooseTheme')}</p><div class="appearance-choices expanded">${Object.entries(palettes).map(([id,palette])=>`<button class="theme-card ${state.theme===id?'selected':''}" data-theme="${id}" aria-pressed="${state.theme===id}"><span class="theme-mini palette-mini" style="--preview-bg:${palette.bg};--preview-side:${palette.sidebar};--preview-panel:${palette.panel};--preview-accent:${palette.accent}"><i></i><b></b><em></em></span><span>${themeName(id)} ${state.theme===id?icon('check'):''}</span></button>`).join('')}</div>${settingRow(t('accent'),t('accentHint'),`<div class="segmented"><button data-accent="purple" class="${state.accent!=='mono'?'selected':''}">${t('purple')}</button><button data-accent="mono" class="${state.accent==='mono'?'selected':''}">${t('mono')}</button></div>`)}${settingRow(t('compact'),t('compactHint'),`<label class="switch"><input aria-label="${t('compact')}" type="checkbox" id="compact-ui" ${state.compact?'checked':''}><span></span></label>`)}`;
+    const [,animationTitle,animationHint] = appearanceOptionsCopy[currentLanguage()] || appearanceOptionsCopy.en;
+    content = settingRow(animationTitle,animationHint,`<label class="switch"><input aria-label="${animationTitle}" type="checkbox" id="interface-animations" ${state.animations!==false?'checked':''}><span></span></label>`) + content;
   } else if (settingsTab === 'game') {
     const [memoryHint, javaHint, automatic] = runtimeCopy[currentLanguage()] || runtimeCopy.ru;
     const [backupHint, retentionTitle, retentionHint] = backupSettingsCopy[currentLanguage()] || backupSettingsCopy.ru;
     const limit = [3, 5, 10].includes(Number(state.backupLimit)) ? Number(state.backupLimit) : 5;
     content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),memoryHint,`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',javaHint,`<span class="setting-value">${automatic}</span>`)}${settingRow(t('backups'),backupHint,`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups!==false?'checked':''}><span></span></label>`)}${settingRow(retentionTitle,retentionHint,`<select id="backup-limit" aria-label="${retentionTitle}">${[3,5,10].map(count=>`<option value="${count}" ${limit===count?'selected':''}>${count}</option>`).join('')}</select>`)}`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.8</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.9</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };
@@ -261,6 +279,7 @@ applyAppearance = function () {
   previousAppearance();
   for (const name of Object.keys(palettes)) document.body.classList.toggle(`theme-${name}`, state.theme === name);
   document.body.classList.toggle('themed', state.theme !== 'dark');
+  document.documentElement.classList.toggle('glass-surface', state.theme === 'glass');
   const palette = palettes[state.theme] || palettes.dark;
   document.body.style.setProperty('--bg', palette.bg);
   document.body.style.setProperty('--panel', palette.panel);

@@ -41,4 +41,4 @@ modal.addEventListener('click',e=>{
   if(e.target.closest('[data-action="close"]')){e.preventDefault();e.stopPropagation();modal.close();return}
   if(e.target===modal)modal.close();
 });
-document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!modal.open){e.preventDefault();catalogType='mods';go('mods');$('#search').focus()}});
+document.addEventListener('keydown',e=>{if(((e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))||(e.key.toLowerCase()==='k'&&(e.ctrlKey||e.metaKey)))&&!modal.open){e.preventDefault();catalogType='mods';go('mods');($('#live-query')||$('#search'))?.focus()}});
