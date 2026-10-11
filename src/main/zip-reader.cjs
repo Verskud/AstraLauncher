@@ -49,8 +49,14 @@ async function openZip(filename, { maxEntry = MAX_ENTRY, maxTotal = MAX_TOTAL } 
       const mode = directory.readUInt32LE(offset + 38) >>> 16;
       if ((mode & 0o170000) === 0o120000) throw new Error('Символические ссылки в архиве не поддерживаются.');
       const key = normalized.toLowerCase();
-      if (entries.has(key)) throw new Error('В архиве повторяется путь к файлу.');
       const isDirectory = name.endsWith('/');
+      const previous = entries.get(key);
+      if (previous) {
+        if (!isDirectory || !previous.isDirectory) throw new Error('В архиве повторяется путь к файлу.');
+        // Repeated directory records carry no files; keep the first validated entry.
+        offset = end;
+        continue;
+      }
       if (!isDirectory) total += unpacked;
       if (total > maxTotal) throw new Error('Архив слишком большой.');
       entries.set(key, { name: normalized, isDirectory, flags, method, packed, unpacked, crc: directory.readUInt32LE(offset + 16), position: directory.readUInt32LE(offset + 42) });

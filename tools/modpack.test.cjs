@@ -12,9 +12,10 @@ after(async () => { await fs.rm(testRoot, { recursive: true, force: true }); });
 const table = Array.from({ length: 256 }, (_, index) => { let value = index; for (let i = 0; i < 8; i++) value = value & 1 ? 0xedb88320 ^ value >>> 1 : value >>> 1; return value >>> 0; });
 function crc32(bytes) { let value = 0xffffffff; for (const byte of bytes) value = table[(value ^ byte) & 255] ^ value >>> 8; return (value ^ 0xffffffff) >>> 0; }
 function zip(entries) {
+  const records = Array.isArray(entries) ? entries : Object.entries(entries);
   const locals = [], centrals = [];
   let offset = 0;
-  for (const [name, value] of Object.entries(entries)) {
+  for (const [name, value] of records) {
     const title = Buffer.from(name), bytes = Buffer.from(value);
     const local = Buffer.alloc(30), central = Buffer.alloc(46);
     local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(0x800, 6); local.writeUInt32LE(crc32(bytes), 14); local.writeUInt32LE(bytes.length, 18); local.writeUInt32LE(bytes.length, 22); local.writeUInt16LE(title.length, 26);
@@ -23,7 +24,7 @@ function zip(entries) {
     offset += local.length + title.length + bytes.length;
   }
   const directory = Buffer.concat(centrals), end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(entries).length, 8); end.writeUInt16LE(Object.keys(entries).length, 10); end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(records.length, 8); end.writeUInt16LE(records.length, 10); end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16);
   return Buffer.concat([...locals, directory, end]);
 }
 
@@ -34,7 +35,18 @@ test('mrpack installs verified files and layered client overrides into a new ins
     const mod = Buffer.from('mod bytes');
     const manifest = { formatVersion: 1, game: 'minecraft', name: 'Test Pack', files: [{ path: 'mods/test.jar', downloads: ['https://cdn.modrinth.com/data/test.jar'], fileSize: mod.length, hashes: { sha512: crypto.createHash('sha512').update(mod).digest('hex') } }], dependencies: { minecraft: '1.21.1', 'fabric-loader': '0.16.0' } };
     const archive = path.join(temp, 'sample.mrpack');
-    await fs.writeFile(archive, zip({ 'modrinth.index.json': JSON.stringify(manifest), 'overrides/config/test.txt': 'base', 'client-overrides/config/test.txt': 'client' }));
+    await fs.writeFile(archive, zip([
+      ['modrinth.index.json', JSON.stringify(manifest)],
+      ['overrides/', ''], ['overrides/config/', ''],
+      ['overrides/config/test.txt', 'base'],
+      ['overrides/', ''], ['overrides/config/', ''],
+      ['client-overrides/config/test.txt', 'client'],
+    ]));
+    const reader = await openZip(archive);
+    try {
+      assert.equal(reader.entries.filter(entry => entry.name === 'overrides').length, 1);
+      assert.equal(reader.entries.filter(entry => entry.name === 'overrides/config').length, 1);
+    } finally { await reader.close(); }
     global.fetch = async () => new Response(mod);
     const installer = createModpackInstaller({ userData: temp });
     const installed = await installer.install({ path: archive });
@@ -85,6 +97,24 @@ test('rejects traversal in both manifest and archive', async () => {
   try {
     const archive = path.join(temp, 'unsafe.mrpack');
     await fs.writeFile(archive, zip({ '../outside': 'bad' }));
+    await assert.rejects(openZip(archive), /небезопасный путь/);
+  } finally { await fs.rm(temp, { recursive: true, force: true }); }
+});
+
+test('rejects duplicate files and file-directory collisions in either order', async () => {
+  const temp = await tempFolder();
+  try {
+    const archive = path.join(temp, 'duplicates.zip');
+    for (const records of [
+      [['config/test.txt', 'first'], ['config/test.txt', 'second']],
+      [['config/test.txt', 'first'], ['CONFIG/TEST.TXT', 'second']],
+      [['config/', ''], ['config', 'file']],
+      [['config', 'file'], ['config/', '']],
+    ]) {
+      await fs.writeFile(archive, zip(records));
+      await assert.rejects(openZip(archive), /повторяется путь/);
+    }
+    await fs.writeFile(archive, zip([['config/', ''], ['config/../', '']]));
     await assert.rejects(openZip(archive), /небезопасный путь/);
   } finally { await fs.rm(temp, { recursive: true, force: true }); }
 });
