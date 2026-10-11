@@ -142,7 +142,7 @@ h2 { font-weight:700; }
 .mod-card { padding:18px; box-shadow:var(--shadow); }
 .mod-card p { font-size:11px; }
 .mod-card-footer { border-color:var(--line); }
-.mod-icon { box-shadow:none; border:0; border-radius:9px; }
+.mod-icon { box-shadow:none; border:1px solid color-mix(in srgb,var(--purple) 28%,var(--panel)); border-radius:9px; color:var(--purple); background:linear-gradient(145deg,color-mix(in srgb,var(--purple) 34%,var(--panel)),color-mix(in srgb,var(--purple) 17%,var(--panel)))!important; }
 .live-icon { border-radius:9px; }
 .category-label { background:var(--hover); }
 .account-card p,.profile-caption,.account-provider { color:var(--muted); }
