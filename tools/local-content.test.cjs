@@ -17,7 +17,7 @@ const { importFiles } = require('../src/main/local-content.cjs');
     assert.equal(result.installed[0].name, 'Test mod');
     assert.deepEqual(await fs.readFile(path.join(instance, 'mods', 'test.jar')), await fs.readFile(mod));
     assert.equal((await importFiles(root, profile, 'mods', [mod])).skipped.length, 1);
-    // The game copy stays independent of a downloaded source changed afterwards.
+
     const before = await fs.readFile(path.join(instance, 'mods', 'test.jar'));
     await fs.writeFile(mod, 'changed');
     assert.deepEqual(await fs.readFile(path.join(instance, 'mods', 'test.jar')), before);
@@ -53,7 +53,7 @@ const { importFiles } = require('../src/main/local-content.cjs');
     await assert.rejects(importFiles(root, profile, 'resources', [shaders]), /pack.mcmeta/);
     const cfPack = await archive('modpack.zip', { 'manifest.json': { manifestType: 'minecraftModpack', minecraft: { version: '1.21.1' }, files: [] } });
     await assert.rejects(importFiles(root, profile, 'resources', [cfPack]), /архив сборки/);
-    // Conflicts with already installed dependency versions are detected as a batch.
+
     const dependent = await archive('dependent.jar', { 'fabric.mod.json': { id: 'dependent', version: '1.0', depends: { test: '>=2.0' } } });
     await assert.rejects(importFiles(root, profile, 'mods', [dependent]), /требует test/);
     assert.equal((await fs.readdir(instance)).some(name => name.startsWith('.content-import-')), false);

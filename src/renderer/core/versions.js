@@ -1,4 +1,4 @@
-// Version IDs come from Mojang's Java Edition manifest through the desktop process.
+
 let minecraftManifest = null;
 let versionRequest = null;
 const profileLoaders = ['Vanilla', 'Fabric', 'Forge', 'NeoForge', 'Quilt'];

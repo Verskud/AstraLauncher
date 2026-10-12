@@ -53,7 +53,7 @@ function createWorldBackups(userData, isActive = () => false) {
       try {
         const manifest = JSON.parse(await fs.readFile(path.join(backupRoot(profileId), entry.name, 'manifest.json'), 'utf8'));
         if (manifest.id === entry.name && ['manual', 'auto', 'pre-restore'].includes(manifest.mode)) backups.push(manifest);
-      } catch { /* An incomplete or damaged copy is not offered for restore. */ }
+      } catch {}
     }
     return backups.sort((a, b) => b.id.localeCompare(a.id));
   }

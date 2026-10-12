@@ -1,4 +1,4 @@
-// Uses official services and an isolated, temporary instance; never the user's game folders.
+
 const fs=require('node:fs/promises'),path=require('node:path'),Module=require('node:module'),assert=require('node:assert/strict');
 const {createPlayerSkins}=require('../src/main/player-skins.cjs');
 async function run(){

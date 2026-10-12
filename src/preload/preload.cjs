@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// A narrow API: the interface cannot access Node.js, files or arbitrary IPC.
+
 contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   openLegalDocument: kind => ipcRenderer.invoke('legal:open', kind),
   setWindowTheme: theme => ipcRenderer.send('window:theme', theme),

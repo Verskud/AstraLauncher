@@ -1,4 +1,4 @@
-// Design preview: local profiles and UI interactions only. No game downloads or authentication.
+
 let catalogType = 'mods';
 let packTab = 'mods';
 let settingsTab = 'general';

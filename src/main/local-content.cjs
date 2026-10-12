@@ -23,7 +23,7 @@ async function inspect(filename, kind, profile) {
     const curseManifest = files.find(entry => entry.name === 'manifest.json');
     let cursePack = false;
     if (curseManifest && curseManifest.unpacked < 4 * 1024 * 1024) {
-      try { const data = JSON.parse((await zip.read(curseManifest)).toString('utf8')); cursePack = data.manifestType === 'minecraftModpack' || Boolean(data.minecraft && Array.isArray(data.files)); } catch { /* Some individual packs also contain unrelated manifests. */ }
+      try { const data = JSON.parse((await zip.read(curseManifest)).toString('utf8')); cursePack = data.manifestType === 'minecraftModpack' || Boolean(data.minecraft && Array.isArray(data.files)); } catch {}
     }
     if (cursePack || files.some(entry => ['modrinth.index.json', 'astra-export.json'].includes(entry.name))) {
       throw new Error('Это архив сборки, а не отдельный мод или пак. CurseForge ZIP с manifest.json содержит ссылки на моды и пока не устанавливается автоматически.');
@@ -105,14 +105,14 @@ async function importFiles(userData, profile, kind, sources) {
           if ((await fs.lstat(target)).isSymbolicLink()) throw new Error('Мод не должен быть ссылкой.');
           existing.push({ metadata: await inspect(target, kind, profile) });
         } catch (error) {
-          // Existing invalid files are reported by the game; do not hide new incompatibilities.
+
           if (error.message === 'Мод не должен быть ссылкой.') throw error;
         }
       }
       checkFabricCompatibility([...existing, ...planned.map(item => ({ metadata: item.metadata }))]);
     }
     for (const item of planned) {
-      // Exclusive creation protects existing files and works without hard-link support.
+
       const handle = await fs.open(item.target, 'wx');
       installed.push({ path: item.target, filename: item.name, name: item.metadata?.name || item.name.replace(/\.(jar|zip)$/i, ''), kind, profileId: profile.id, source: 'local', version: item.metadata?.version || '', disabled: false });
       try {

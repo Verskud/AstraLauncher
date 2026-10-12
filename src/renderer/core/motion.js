@@ -1,4 +1,4 @@
-// Animate stable containers: background refreshes must not restart the entrance.
+
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 const motionAllowed = () => state.animations !== false && !motionPreference.matches;
 const motionEase = 'cubic-bezier(.16,1,.3,1)';
@@ -42,14 +42,14 @@ render = function () {
     { opacity: 0, transform: 'translateY(8px)' },
     { opacity: 1, transform: 'translateY(0)' },
   ], { duration: 340, easing: motionEase });
-  // A short, capped cascade gives the new screen a clear entrance without
-  // animating hundreds of catalog rows or restarting during background renders.
+
+
   pageElements = [...main.querySelectorAll(entranceSelector)].slice(0, 8).map((element, index) => element.animate([
     { opacity: 0, transform: 'translateY(11px) scale(.987)' },
     { opacity: 1, transform: 'translateY(0) scale(1)' },
   ], { duration: 440, delay: index * 32, easing: motionEase }));
 };
-// One entrance/exit at a time. Reopening during an exit cancels the stale close.
+
 const closeDialogImmediately = modal.close.bind(modal);
 const showModalBeforeMotion = showModal;
 let dialogEntrance;
@@ -71,7 +71,7 @@ modal.close = function (returnValue) {
     dialogExit = null;
   };
   dialogExit.onfinish = finish;
-  // Also complete if the animation clock is suspended when the window is hidden.
+
   dialogCloseTimer = setTimeout(finish, 240);
 };
 showModal = function (html) {
@@ -88,7 +88,7 @@ showModal = function (html) {
   ], { duration:340,easing:motionEase });
 };
 modal.addEventListener('cancel', event => {
-  if (event.defaultPrevented) return; // An installer may have opened a confirmation.
+  if (event.defaultPrevented) return;
   event.preventDefault();
   modal.close();
 });

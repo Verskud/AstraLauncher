@@ -95,7 +95,7 @@ function filePlan(root, version, metadata, index) {
 
 function createInstaller({ root, requestImpl = httpsRequest, onProgress = () => {} }) {
   let active = null;
-  const emit = state => { try { onProgress({ ...state }); } catch { /* The window may have closed while downloading. */ } };
+  const emit = state => { try { onProgress({ ...state }); } catch {} };
   async function fetchResponse(url, signal) {
     const response = await requestImpl(officialUrl(url), { signal });
     if (response.status < 200 || response.status >= 300 || !response.body) {

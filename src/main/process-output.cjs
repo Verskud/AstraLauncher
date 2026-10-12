@@ -3,8 +3,8 @@ const path = require('node:path');
 const { Console } = require('node:console');
 const { Writable } = require('node:stream');
 
-// A GUI may outlive the terminal that launched it. A closed diagnostic pipe
-// must not become an uncaught exception in Electron's internal IPC logging.
+
+
 function protectProcessOutput() {
   for (const stream of [process.stdout, process.stderr]) {
     stream.on('error', error => {
@@ -30,7 +30,7 @@ function routeConsoleToFile(filename) {
         fs.appendFileSync(filename, chunk);
         size += chunk.length;
       } catch {
-        // A diagnostic write failure must not recursively invoke console.error.
+
       }
       done();
     },

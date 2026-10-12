@@ -1,4 +1,4 @@
-// Launch Electron with --remote-debugging-port=9222 before running this smoke check.
+
 const pages = await fetch('http://127.0.0.1:9222/json').then(r => r.json());
 const page = pages.find(item => item.title === 'AstraLauncher');
 if (!page) throw new Error('AstraLauncher window not found');

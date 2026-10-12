@@ -1,4 +1,4 @@
-const USER_AGENT = 'AstraLauncher/0.9.27 (Windows desktop launcher)';
+const USER_AGENT = 'AstraLauncher/1.0.0 (Windows desktop launcher)';
 const kinds = { mods: 'mod', modpacks: 'modpack', shaders: 'shader', resources: 'resourcepack' };
 
 async function getJson(url, headers = {}) {
@@ -42,7 +42,7 @@ async function searchCurseForge({ kind, query = '', offset = 0 }, key) {
   url.searchParams.set('sortField', '6');
   url.searchParams.set('sortOrder', 'desc');
   if (query) url.searchParams.set('searchFilter', String(query).slice(0, 100));
-  // Class IDs are resolved from the official API instead of hard-coded guesses.
+
   const classes = await getJson('https://api.curseforge.com/v1/categories?gameId=432', { 'x-api-key': key });
   const classNames = {
     mods: ['mc mods'], modpacks: ['modpacks'], shaders: ['shaders'], resources: ['resource packs', 'texture packs'],

@@ -1,4 +1,4 @@
-// A small canvas renderer for the local skin preview. Textures stay on this device.
+
 function paintSkin3D(canvas, skin, cape, model, yaw) {
  const ctx=canvas.getContext('2d');
  const width=canvas.width,height=canvas.height,scale=Math.min(width/25,height/39);

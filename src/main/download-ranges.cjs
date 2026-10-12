@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const { withDownloadResponse } = require('./download-response.cjs');
 const { retryDownload } = require('./download-stream.cjs');
 
-// Only use ranges for verified, known-size files from the official Modrinth CDN.
+
 async function downloadRanges(url, target, { size, limit, sha512, sha1, signal, onProgress = () => {} }) {
   if (!Number.isSafeInteger(size) || size < 2 * 1024 * 1024 || new URL(url).hostname !== 'cdn.modrinth.com') return false;
   if (size > limit) throw new Error('Файл превышает допустимый размер загрузки.');

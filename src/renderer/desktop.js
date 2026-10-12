@@ -1,5 +1,5 @@
 document.documentElement.classList.add('desktop-app');
-// All page modules are now loaded; render the final views before first paint.
+
 render();
 const toolbar = document.querySelector('.toolbar');
 if (toolbar) {

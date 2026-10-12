@@ -1,5 +1,5 @@
 {
-  "version": "0.9.28",
+  "version": "1.0.0",
   "year": 2026,
   "owner": "ASTRA",
   "country": "Украина",
@@ -9,7 +9,7 @@
   "downloadReady": true,
   "releaseRepository": "Verskud/AstraLauncher",
   "sourceRepository": "Verskud/AstraLauncher",
-  "filename": "AstraLauncher-0.9.28.exe",
+  "filename": "AstraLauncher-1.0.0.exe",
   "size": "Около 100 МБ",
   "signingNote": "Файл пока не подписан сертификатом издателя; Windows может показать предупреждение.",
   "date": "12 октября 2026"

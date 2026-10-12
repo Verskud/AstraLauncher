@@ -37,7 +37,7 @@ function createFriendsPlay({ resolve, download, listInstalled, onProgress = () =
     if (!tunnel) return { reason: 'unsupported', tunnel: null, local: null };
     tunnel.installed = !!active(TUNNEL);
     const candidates = LAN_SETTINGS.filter(project => project.loaders.includes(profile.loader.toLowerCase()));
-    // Keep an existing settings mod instead of installing a second mod for the same LAN screen.
+
     candidates.sort((a,b) => Number(!!active(b)) - Number(!!active(a)));
     let local = null;
     for (const project of candidates) {

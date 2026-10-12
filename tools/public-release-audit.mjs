@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 
-// Scan reachable Git blobs, including older revisions; never print matching values.
+
 const git = args => execFileSync('git', args, { maxBuffer: 128 * 1024 * 1024 });
 const objects = git(['rev-list', '--objects', '--all']).toString().trim().split('\n');
 const paths = new Map(objects.map(line => [line.split(' ')[0], line.slice(41)]));
@@ -27,7 +27,7 @@ for (const id of blobs) {
   const text = bytes.toString('utf8');
   for (const [kind, expression] of patterns) if (expression.test(text)) {
     const finding = { kind, path: paths.get(id), object: id.slice(0, 10) };
-    // Third-party copyright notices intentionally retain their authors' contacts.
+
     if (kind === 'personal email' && /^(?:src\/renderer\/legal|website\/src)\/licenses\//.test(finding.path)) noticesWithAuthorContacts.push(finding.path);
     else findings.push(finding);
   }

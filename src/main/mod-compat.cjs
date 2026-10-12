@@ -49,7 +49,7 @@ function matchesVersion(version, requirement) {
   const parts = text.split(/\s*\|\|\s*/);
   if (parts.length > 1) return parts.some(part => matchesVersion(version, part));
   const match = /^(>=|<=|>|<|\^|~|=)?\s*(\d+(?:\.\d+)?(?:\.\d+)?)(?:\.(x|\*))?$/.exec(text);
-  if (!match) return true; // Unknown Fabric predicate: leave final validation to Fabric Loader.
+  if (!match) return true;
   const [, operator = '', wanted, wildcard] = match;
   const comparison = compareVersions(version, wanted);
   if (wildcard) return String(version).startsWith(`${wanted}.`);
@@ -88,7 +88,7 @@ async function checkModFolder(folder) {
   for (const name of names.filter(value => value.toLowerCase().endsWith('.jar')).slice(0, 500)) {
     const bytes = await fs.readFile(path.join(folder, name));
     try { entries.push({ metadata: fabricMetadata(bytes) }); }
-    catch { /* An unrelated or damaged JAR is reported by the loader itself. */ }
+    catch {}
   }
   checkFabricCompatibility(entries);
 }

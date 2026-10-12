@@ -36,7 +36,7 @@ async function getJava(root, metadata, onProgress = () => {}) {
     const target = relativePath(root, `java/${component}/${name}`);
     if (entry.type === 'directory') await fs.mkdir(target, { recursive: true });
     else if (entry.type === 'file' && entry.downloads?.raw?.url && entry.downloads.raw.sha1) await downloadFile(entry.downloads.raw.url, target, entry.downloads.raw.sha1);
-    else if (entry.type === 'link') { /* Windows runtime manifests normally contain no symlinks. */ }
+    else if (entry.type === 'link') {}
     else throw new Error('Неизвестный тип файла Java.');
     done++;
     if (done % 10 === 0 || done === files.length) onProgress({ phase: 'java', message: `Java ${major}: ${done} из ${files.length} файлов` });

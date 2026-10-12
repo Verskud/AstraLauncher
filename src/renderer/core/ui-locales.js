@@ -1,6 +1,6 @@
-// Text that comes from the older instance and dialog views. Each row is
-// [Russian source, English, German, French, Spanish, Korean, Japanese,
-//  Simplified Chinese, Traditional Chinese, Arabic, Norwegian Bokmål].
+
+
+
 const uiLocaleRows = [
   ['Уведомления','Notifications','Benachrichtigungen','Notifications','Notificaciones','알림','通知','通知','通知','الإشعارات','Varsler'],
   ['Резервные копии миров','World backups','Welt-Sicherungen','Sauvegardes des mondes','Copias de los mundos','월드 백업','ワールドのバックアップ','世界备份','世界備份','نسخ العوالم الاحتياطية','Sikkerhetskopier av verdener'],

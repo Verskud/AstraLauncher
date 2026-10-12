@@ -6,7 +6,7 @@ const { createFriendsPlay } = require('../src/main/friends-play.cjs');
   const workspace = path.resolve(__dirname), root = await fs.mkdtemp(path.join(workspace,'.friends-network-'));
   if (!root.startsWith(workspace + path.sep)) throw new Error('Unexpected temporary path');
   try {
-    // The real downloader writes exclusively to a disposable instance, never to user profiles.
+
     const electronPath = require.resolve('electron');
     require.cache[electronPath] = { id:electronPath,filename:electronPath,loaded:true,exports:{app:{getPath:()=>root},shell:{}} };
     const downloads = require('../src/main/download.cjs');

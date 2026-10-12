@@ -2,7 +2,7 @@ const fs=require('node:fs/promises');
 const {createReadStream}=require('node:fs');
 const {safePath}=require('./zip-reader.cjs');
 const table=Array.from({length:256},(_,i)=>{for(let j=0;j<8;j++)i=i&1?0xedb88320^(i>>>1):i>>>1;return i>>>0;});
-// ZIP32 with data descriptors: stream files without buffering an entire modpack.
+
 async function writeZip(filename,entries){
  const file=await fs.open(filename,'wx'),central=[];let position=0;
  const now=new Date(),dosTime=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1),dosDate=((Math.min(2107,Math.max(1980,now.getFullYear()))-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();

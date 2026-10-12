@@ -22,7 +22,7 @@ accountsPage=function(){
  const heading=`<section class="page-intro"><div><div class="eyebrow">ASTRA</div><h1>${t('accountTitle')}</h1><p>${t('accountIntro')}</p></div></section>`;
  const cards=`<div class="accounts-grid account-provider-grid">${card('local',state.profile,accountText('localHint'),true,`<button class="text-button" data-action="account">${t('profile')}</button>`)}${card('ely',elyStatus.connected?elyStatus.name:'Ely.by',accountText('elyHint'),elyStatus.connected,`<button class="${elyStatus.connected?'text-button':'button secondary full'}" ${elyStatus.connected?'data-ely-disconnect':'data-ely-login'}>${accountText(elyStatus.connected?'signOut':'signIn')}</button>${elyStatus.connected?`<button class="text-button" data-ely-login>${accountText('signIn')}</button>`:''}`)}${card('microsoft',integrationStatus.microsoftAccount||'Microsoft',integrationStatus.microsoftAccount?connectionNoteCopy[currentLanguage()]||connectionNoteCopy.en:accountText('microsoftLater'),!!integrationStatus.microsoftAccount,integrationStatus.microsoftAccount?`<button class="text-button" data-live-disconnect>${accountText('signOut')}</button>`:'')}</div>`;
  let panel=legacyAccountPanel();panel=panel.slice(panel.indexOf('<section class="skin-panel">'));
- // The local profile owns local files. Connected account textures follow that account.
+
  if(local){
  panel=panel.replace(/<option value="ely"[^>]*>Ely.by<\/option>/,'').replace(networkText('official'),accountText('publicSkin')).replace(networkText('clear')+' · '+networkText('skin'),accountText('resetSkin')).replace(networkText('clear')+' · '+networkText('cape'),accountText('resetCape'));
  }else{

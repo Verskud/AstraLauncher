@@ -1,4 +1,4 @@
-// The player's instances come first; actions reuse the existing launch/import flows.
+
 const homeCopy = {
   ru: ['С возвращением.', 'Во что играем сегодня?', 'Твоя сборка', 'Играть', 'Открыть сборку', 'Найти что-нибудь новое', 'Моды, готовые сборки и шейдеры от сообщества.'],
   en: ['Welcome back.', 'What are we playing today?', 'Your instance', 'Play', 'Open instance', 'Find something new', 'Mods, modpacks and shaders from the community.'],

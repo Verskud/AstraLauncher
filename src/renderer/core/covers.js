@@ -1,4 +1,4 @@
-// Shared vector covers: every scene has its own terrain and consistent block geometry.
+
 let coverSequence = 0;
 function art(kind = 'forest') {
   const colors = {

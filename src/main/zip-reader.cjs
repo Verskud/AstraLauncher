@@ -53,7 +53,7 @@ async function openZip(filename, { maxEntry = MAX_ENTRY, maxTotal = MAX_TOTAL } 
       const previous = entries.get(key);
       if (previous) {
         if (!isDirectory || !previous.isDirectory) throw new Error('В архиве повторяется путь к файлу.');
-        // Repeated directory records carry no files; keep the first validated entry.
+
         offset = end;
         continue;
       }

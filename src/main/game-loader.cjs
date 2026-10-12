@@ -47,7 +47,7 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
   try {
     const cached = JSON.parse(await fs.readFile(saved, 'utf8'));
     if (!pinned || !['Forge', 'NeoForge'].includes(profile.loader) || matchesLoaderProfile(profile, cached, profile.loader === 'Forge' ? `${profile.version}-${pinned}` : pinned)) return cached;
-    // An older ASTRA build could cache another installed Forge version here.
+
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   onProgress({ phase: 'loader', message: `Устанавливаем ${profile.loader}…` });
   let metadata;
@@ -62,7 +62,7 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
       const relative = mavenPath(library.name);
       const baseUrl = library.url || (profile.loader === 'Fabric' ? 'https://maven.fabricmc.net/' : 'https://maven.quiltmc.org/repository/release/');
       const url = new URL(relative, baseUrl).href;
-      // Fabric and Quilt metadata often omit hashes. The Maven artifact itself is checked against its published SHA-1.
+
       const hash = library.sha1 || (await getJsonText(`${url}.sha1`)).trim().split(/\s/)[0];
       await downloadFile(url, relativePath(root, `libraries/${relative}`), hash);
     }
@@ -90,7 +90,7 @@ async function getLoaderProfile(profile, root, java, onProgress = () => {}) {
     for (const entry of entries) {
       if (!entry.isDirectory() || !entry.name.toLowerCase().includes(artifact) || !entry.name.includes(neoforge ? selected : profile.version)) continue;
       const file = path.join(versionRoot, entry.name, `${entry.name}.json`);
-      try { candidatesJson.push({ file, data: JSON.parse(await fs.readFile(file, 'utf8')) }); } catch { /* another version */ }
+      try { candidatesJson.push({ file, data: JSON.parse(await fs.readFile(file, 'utf8')) }); } catch {}
     }
     metadata = candidatesJson.find(item => matchesLoaderProfile(profile, item.data, selected))?.data;
     if (!metadata) throw new Error(`Установщик ${profile.loader} не создал профиль версии.`);

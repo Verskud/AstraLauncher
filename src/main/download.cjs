@@ -34,7 +34,7 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.27' };
+  const headers = { 'User-Agent': 'AstraLauncher/1.0.0' };
   if (key) headers['x-api-key'] = key;
   return withDownloadResponse(url, { headers, signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
@@ -98,7 +98,7 @@ async function existingModMetadata(profileId) {
   for (const name of names.filter(value => value.toLowerCase().endsWith('.jar')).slice(0, 500)) {
     const file = path.join(folder, name);
     let metadata = null;
-    try { metadata = fabricMetadata(await fs.readFile(file)); } catch { /* Another loader's JAR may have no Fabric metadata. */ }
+    try { metadata = fabricMetadata(await fs.readFile(file)); } catch {}
     entries.push({ path: file, name, metadata });
   }
   return entries;

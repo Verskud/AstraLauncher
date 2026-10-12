@@ -1,4 +1,4 @@
-// Official catalogs run through the main process; no API keys reach this page.
+
 let liveSource = 'modrinth';
 let liveQuery = '';
 let liveOffset = 0;
@@ -12,7 +12,7 @@ const humanError = error => String(error?.message || 'Не удалось вып
 
 async function refreshIntegrations() {
   try { integrationStatus = await window.astraDesktop.integrationsStatus(); }
-  catch { /* the app can still render offline */ }
+  catch {}
 }
 
 results = () => {};

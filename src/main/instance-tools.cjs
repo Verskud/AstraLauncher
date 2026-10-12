@@ -42,7 +42,7 @@ function createInstanceTools(root,{download,nativeImage,api=modrinthApi}={}){
  const id=crypto.randomUUID(),profile=portableProfile({...input,name},id),source=instanceFolder(root,input.id),target=instanceFolder(root,id);
  try{
  await fs.mkdir(target,{recursive:true});for(const file of await filesIn(source,includeWorlds,true)){const output=path.join(target,...file.name.split('/'));await fs.mkdir(path.dirname(output),{recursive:true});await fs.copyFile(file.path,output);}
- // Local skin opt-in is retained only in a local clone, never in a shared archive.
+
  try{await fs.copyFile(path.join(source,'astra-skins.json'),path.join(target,'astra-skins.json'));}catch(error){if(error.code!=='ENOENT')throw error;}
  await fs.writeFile(path.join(target,'astra-pack.json'),JSON.stringify(profile));return profile;
  }catch(error){await fs.rm(target,{recursive:true,force:true});throw error;}

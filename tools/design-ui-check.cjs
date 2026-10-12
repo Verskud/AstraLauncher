@@ -39,7 +39,7 @@ module.exports = async function checkDesign(page) {
   }
   await page.evaluate(()=>{state.theme='sand';settingsTab='appearance';go('settings');});
   await capture('appearance-sand');
-  // Every palette must be applied to native controls as well as the page surface.
+
   const colors = await page.evaluate(()=>({scheme:getComputedStyle(document.body).colorScheme,text:getComputedStyle(document.querySelector('h1')).color}));
   assert.equal(colors.scheme,'light');
   assert.equal(colors.text,'rgb(41, 50, 53)');
@@ -54,11 +54,11 @@ module.exports = async function checkDesign(page) {
   assert.equal(await page.locator('[data-launch]').count(),0);
   await capture('empty-small');
 
-  // Background renders retain the animation on the stable main container.
+
   assert.equal(await page.evaluate(()=>{go('library');const animation=pageEntrance;render();return pageEntrance===animation;}),true);
   await page.evaluate(()=>{for(const view of ['settings','library','downloads','discover'])go(view);});
   assert.equal(await page.locator('#main').evaluate(el=>el.getAnimations().length<=1),true);
-  // A delayed close must not close a newly opened dialog.
+
   await page.evaluate(()=>{showModal('<h2>First</h2>');modal.close();showModal('<h2>Second</h2>');});
   await capture('dialog-reopened');
   assert.equal(await page.locator('#modal').evaluate(el=>el.open),true);
@@ -77,7 +77,7 @@ module.exports = async function checkDesign(page) {
   await page.emulateMedia({reducedMotion:'no-preference'});
   await page.evaluate(()=>{state.animations=false;go('settings');});
   assert.equal(await page.evaluate(()=>document.getAnimations().length),0);
-  // All new home strings are present for each supported language, including RTL.
+
   await page.evaluate(()=>{state.animations=true;state.theme='dark';});
   for (const locale of ['ru','en','de','fr','es','ko','ja','zh-CN','zh-TW','ar','de-CH','nb']) {
     await page.evaluate(locale=>{state.language=locale;go('discover');},locale);

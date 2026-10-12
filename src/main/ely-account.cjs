@@ -32,7 +32,7 @@ function createElyAccount(root,{storage=safeStorage,request=elyRequest}={}){
  function cancel(){generation++;pending?.abort();}
  async function disconnect(){
   cancel();const data=await read();await fs.rm(filename,{force:true});
-  if(data){try{await request('/auth/invalidate',decode(data));}catch{/* Local logout is complete even if the service is unreachable. */}}
+  if(data){try{await request('/auth/invalidate',decode(data));}catch{}}
   return {connected:false};
  }
  return{status,signIn,account,cancel,disconnect};
