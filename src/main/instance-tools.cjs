@@ -57,7 +57,7 @@ function createInstanceTools(root,{download,nativeImage,api=modrinthApi}={}){
  async function importZip(filename){return exclusive(async()=>{
  const zip=await openZip(filename,{maxEntry:1024*1024*1024,maxTotal:8*1024*1024*1024}),id=crypto.randomUUID(),target=instanceFolder(root,id);
  try{
- const manifest=zip.entries.find(entry=>entry.name==='astra-export.json');if(!manifest||manifest.unpacked>100000)throw new Error('Это не ZIP-сборка ASTRA.');
+ const manifest=zip.entries.find(entry=>entry.name==='astra-export.json');if(!manifest||manifest.unpacked>100000){if(zip.entries.some(entry=>entry.name==='manifest.json'))throw new Error('CurseForge ZIP содержит список модов для загрузки. Автоматический импорт пока недоступен. Открой CurseForge в каталоге, создай сборку с нужной версией и добавь скачанные моды кнопкой «Добавить файлы».');throw new Error('Это не ZIP-сборка ASTRA. Для импорта нужен ASTRA ZIP или Modrinth .mrpack.');}
  const data=JSON.parse((await zip.read(manifest)).toString('utf8'));if(data.format!=='astra-instance-v1')throw new Error('Неподдерживаемый формат ZIP.');
  const profile=portableProfile(data.profile,id);await fs.mkdir(target,{recursive:true});
  for(const entry of zip.entries){if(entry.isDirectory||entry===manifest)continue;if(!entry.name.startsWith('instance/'))throw new Error('Некорректный путь в ZIP.');const relative=safePath(entry.name.slice(9));if(relative.split('/').some(part=>excluded.has(part)))throw new Error('В архиве найден служебный файл.');const output=path.join(target,...relative.split('/'));await fs.mkdir(path.dirname(output),{recursive:true});await fs.writeFile(output,await zip.read(entry),{flag:'wx'});}

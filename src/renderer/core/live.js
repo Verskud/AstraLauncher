@@ -17,7 +17,7 @@ async function refreshIntegrations() {
 
 results = () => {};
 catalogPage = function () {
-  const sourceTabs = `<div class="source-tabs"><button class="${liveSource==='modrinth'?'selected':''}" data-live-source="modrinth">Modrinth</button><button class="${liveSource==='curseforge'?'selected':''}" data-live-source="curseforge">CurseForge${integrationStatus.curseforgeReady?'':' · нужен ключ'}</button></div>`;
+  const sourceTabs = `<div class="source-tabs"><button class="${liveSource==='modrinth'?'selected':''}" data-live-source="modrinth">Modrinth</button><button class="${liveSource==='curseforge'?'selected':''}" data-live-source="curseforge">CurseForge · сайт</button></div>`;
   return `<section class="page-intro"><div><div class="eyebrow">ОФИЦИАЛЬНЫЕ КАТАЛОГИ</div><h1>Каталог</h1><p>Настоящие проекты от авторов на Modrinth и CurseForge.</p></div><span class="subtle">${liveSource==='modrinth'?'Modrinth':'CurseForge'} API</span></section>${tabs(catalogTabs,catalogType,'data-catalog-tab')}${sourceTabs}<div class="search-row"><label class="search">${icon('search')}<input id="live-query" type="search" aria-label="Поиск" placeholder="Найти ${liveLabels[catalogType]}…" value="${esc(liveQuery)}"></label><button class="button secondary" data-live-refresh>Обновить</button></div><div id="live-status" class="live-status">Загружаем каталог…</div><div id="live-results" class="mod-grid"></div><div id="live-more"></div><div class="catalog-note">Выбери сборку в карточке проекта, чтобы установить файл в неё.</div>`;
 };
 
@@ -34,6 +34,7 @@ function liveCard(item, index) {
   return `<article class="mod-card live-card"><div class="mod-card-top">${src?`<img class="live-icon" src="${esc(src)}" alt="" loading="lazy">`:`<span class="mod-icon" style="--mod-color:#745c90">${esc((item.name||'?')[0])}</span>`}<span class="category-label">${esc(liveLabels[item.kind])}</span></div><h3 class="mod-title">${esc(item.name)}</h3><span class="author">от ${esc(item.author||'автора проекта')}</span><p>${esc(item.description||'Описание на странице проекта')}</p><div class="mod-card-footer"><span>${icon('down')} ${number}</span><button class="add-button" data-live-detail="${index}" aria-label="Открыть сведения о ${esc(item.name)}">${icon('arrow')}</button></div></article>`;
 }
 async function searchLive(append = false) {
+  if (liveSource === 'curseforge') { ++liveSerial; liveItems = []; liveOffset = 0; liveTotal = 0; return; }
   const container = $('#live-results');
   if (!container) return;
   const serial = ++liveSerial;
@@ -147,8 +148,8 @@ window.astraDesktop.recoverModpacks().then(profiles => {
 }).catch(() => {});
 
 function configModal(kind) {
-  if (kind === 'curseforge') showModal(`<h2>CurseForge API</h2><p>Укажи ключ приложения CurseForge. Он сохранится зашифрованным локально и не попадёт в интерфейс.</p><form id="curseforge-form"><label>API ключ<input name="key" type="password" autocomplete="off" placeholder="Вставь ключ" ${integrationStatus.curseforgeReady?'':'required'}></label><button class="button light full">Сохранить</button></form>${integrationStatus.curseforgeReady?'<button class="text-button" data-live-clear-key>Удалить ключ</button>':''}`);
-  else showModal(`<h2>Приложение Microsoft</h2><p>Укажи Application (client) ID своего приложения, зарегистрированного для личных аккаунтов Microsoft и публичного клиента.</p><form id="microsoft-id-form"><label>Client ID<input name="id" value="${esc(integrationStatus.microsoftClientId)}" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required></label><button class="button light full">Сохранить</button></form><div class="info-box">Понадобится разрешить public client flows в регистрации приложения.</div>`);
+  if (kind === 'curseforge') { liveSource = 'curseforge'; modal.close(); go('mods'); return; }
+  showModal(`<h2>Приложение Microsoft</h2><p>Укажи Application (client) ID своего приложения, зарегистрированного для личных аккаунтов Microsoft и публичного клиента.</p><form id="microsoft-id-form"><label>Client ID<input name="id" value="${esc(integrationStatus.microsoftClientId)}" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required></label><button class="button light full">Сохранить</button></form><div class="info-box">Понадобится разрешить public client flows в регистрации приложения.</div>`);
 }
 
 async function startMicrosoft() {
@@ -173,7 +174,7 @@ async function startMicrosoft() {
 document.addEventListener('click', async event => {
   const button = event.target.closest('button'); if (!button) return;
   const data = button.dataset;
-  if (data.liveSource) { liveSource = data.liveSource; render(); }
+  if (data.liveSource) { clearTimeout(liveDebounce); liveSource = data.liveSource; render(); }
   if (data.liveRefresh !== undefined) searchLive();
   if (data.liveMore !== undefined) searchLive(true);
   if (data.liveDetail !== undefined) projectModal(Number(data.liveDetail));
@@ -189,7 +190,6 @@ document.addEventListener('click', async event => {
   if (data.liveMicrosoft !== undefined) startMicrosoft();
   if (data.liveAccountMode) { state.accountMode=data.liveAccountMode; save(); render(); toast(data.liveAccountMode==='microsoft'?'Выбран Microsoft для запуска':'Выбран локальный запуск'); }
   if (data.liveAuthOpen !== undefined) window.astraDesktop.microsoftOpen().catch(error => toast(humanError(error)));
-  if (data.liveClearKey !== undefined) { await window.astraDesktop.saveCurseForgeKey(''); await refreshIntegrations(); modal.close(); render(); toast('Ключ удалён'); }
   if (data.liveDisconnect !== undefined) { await window.astraDesktop.microsoftDisconnect(); state.accountMode='local'; save(); await refreshIntegrations(); render(); toast('Аккаунт отключён'); }
   if (data.liveOpen !== undefined) {
     const item = liveItems[Number(data.liveOpen)];
@@ -238,12 +238,11 @@ document.addEventListener('submit', async event => {
     } catch (error) { toast(humanError(error)); button.disabled = false; button.innerHTML = `Скачать / установить ${icon('down')}`; }
     return;
   }
-  if (!['curseforge-form','microsoft-id-form'].includes(event.target.id)) return;
+  if (event.target.id !== 'microsoft-id-form') return;
   event.preventDefault();
   const data = new FormData(event.target);
   try {
-    if (event.target.id === 'curseforge-form') await window.astraDesktop.saveCurseForgeKey(data.get('key'));
-    else await window.astraDesktop.saveMicrosoftClientId(data.get('id'));
+    await window.astraDesktop.saveMicrosoftClientId(data.get('id'));
     await refreshIntegrations(); modal.close(); render(); toast('Настройка сохранена');
   } catch (error) { toast(humanError(error)); }
 });

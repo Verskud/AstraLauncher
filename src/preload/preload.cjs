@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   selectCustomFont: () => ipcRenderer.invoke('appearance:font-select'),
   resetCustomFont: () => ipcRenderer.invoke('appearance:font-reset'),
   catalogSearch: request => ipcRenderer.invoke('catalog:search', request),
+  openCurseForgeWebsite: (kind,query) => ipcRenderer.invoke('catalog:curseforge-website', kind,query),
+  importInstanceContent: (profile,kind) => ipcRenderer.invoke('instances:import-content', profile,kind),
+  openContentFolder: (id,kind) => ipcRenderer.invoke('instances:content-folder', id,kind),
   openProject: url => ipcRenderer.invoke('catalog:open-project', url),
   downloadProject: request => ipcRenderer.invoke('catalog:download', request),
   installCatalogModpack: request => ipcRenderer.invoke('modpack:catalog-install', request),
@@ -81,7 +84,6 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
     return () => ipcRenderer.removeListener('minecraft:progress', listener);
   },
   integrationsStatus: () => ipcRenderer.invoke('integrations:status'),
-  saveCurseForgeKey: key => ipcRenderer.invoke('integrations:curseforge', key),
   saveMicrosoftClientId: id => ipcRenderer.invoke('integrations:microsoft-id', id),
   microsoftStart: () => ipcRenderer.invoke('microsoft:start'),
   microsoftPoll: () => ipcRenderer.invoke('microsoft:poll'),

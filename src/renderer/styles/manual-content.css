@@ -1,0 +1,9 @@
+.manual-content-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 24px; margin-top: 22px; }
+.manual-content-panel h2 { margin: 0 0 20px; }
+.manual-content-panel form { max-width: 780px; }
+#manual-content-form label, #manual-content-dialog-form label { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+#manual-content-form select, #manual-content-dialog-form select { width: 100%; }
+#manual-content-form .row, #manual-content-dialog-form .row, .section-heading .row { flex-wrap: wrap; }
+.manual-content-panel p { line-height: 1.65; }
+.content-error:not(:empty) { color: var(--danger, #d98282); }
+@media (max-width: 1000px) { .manual-content-panel { padding: 18px; } }

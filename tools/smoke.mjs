@@ -40,8 +40,8 @@ const shaders = await evaluate('({status:document.querySelector("#live-status")?
 assert(shaders.cards > 0, `Shader catalog empty: ${shaders.status}`);
 await evaluate('document.querySelector("[data-live-source=curseforge]").click()');
 await new Promise(resolve => setTimeout(resolve, 600));
-const curseforge = await evaluate('document.querySelector("#live-status")?.textContent');
-assert(curseforge.includes('ключ'), `CurseForge setup hint missing: ${curseforge}`);
+const curseforge = await evaluate('({website: Boolean(document.querySelector("#curseforge-search-form")), importHint: document.querySelector(".manual-content-panel")?.textContent})');
+assert(curseforge.website && curseforge.importHint, 'CurseForge website and manual installation controls missing');
 await evaluate('document.querySelector("[data-page=accounts]").click()');
 const microsoft = await evaluate('Boolean(document.querySelector("[data-live-microsoft]"))');
 assert(microsoft, 'Microsoft account control missing');

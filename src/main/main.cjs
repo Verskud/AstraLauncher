@@ -18,6 +18,7 @@ const { createServerMonitor, parseAddress } = require('./server-status.cjs');
 const { createPlayerSkins } = require('./player-skins.cjs');
 const { createInstanceTools } = require('./instance-tools.cjs');
 const { createFriendsPlay } = require('./friends-play.cjs');
+const { importFiles: importLocalContent, folders: contentFolders } = require('./local-content.cjs');
 const ely = require('./ely-account.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
@@ -121,7 +122,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('catalog:search', args => {
       const request = { source: args?.source, kind: args?.kind, query: args?.query, offset: args?.offset };
       if (request.source === 'modrinth') return catalog.searchModrinth(request);
-      if (request.source === 'curseforge') return catalog.searchCurseForge(request, preferences.getCurseForgeKey());
+      if (request.source === 'curseforge') throw new Error('CurseForge доступен через официальный сайт.');
       throw new Error('Неизвестный источник каталога.');
     });
     guarded('integrations:status', () => preferences.status());
@@ -149,6 +150,23 @@ if (!app.requestSingleInstanceLock()) {
     guarded('instances:toggle-mod', (id,name) => { editableInstance();return instances.toggle(id,name); });
     guarded('instances:clone', (profile,name,worlds) => { editableInstance();return instances.clone(profile,name,worlds===true); });
     guarded('instances:updates', profile => instances.checkUpdates(profile));
+    guarded('instances:import-content', async (profile, kind) => {
+      require('./game-loader.cjs').validateProfile(profile);
+      if (!Object.hasOwn(contentFolders, kind)) throw new Error('Неизвестный тип файлов.');
+      if (kind === 'mods' && profile.loader === 'Vanilla') throw new Error('Сначала выбери загрузчик в параметрах сборки.');
+      editableInstance();
+      const result = await dialog.showOpenDialog(mainWindow, { defaultPath: app.getPath('downloads'), properties: ['openFile', 'multiSelections'], filters: [{ name: kind === 'mods' ? 'Minecraft mods' : 'Minecraft packs', extensions: kind === 'mods' ? ['jar'] : ['zip'] }] });
+      if (result.canceled || !result.filePaths.length) return null;
+      editableInstance(); catalogInstallPending = true;
+      try { return await importLocalContent(app.getPath('userData'), profile, kind, result.filePaths); }
+      finally { catalogInstallPending = false; }
+    });
+    guarded('instances:content-folder', async (id, kind) => {
+      if (!Object.hasOwn(contentFolders, kind)) throw new Error('Неизвестный тип файлов.');
+      const folder = path.join(require('./game-loader.cjs').instanceFolder(app.getPath('userData'), id), contentFolders[kind]);
+      await require('node:fs/promises').mkdir(folder, { recursive: true });
+      const error = await shell.openPath(folder); if (error) throw new Error(error);
+    });
     guarded('instances:update-mod', (profile,choice) => { editableInstance();return instances.update(profile,choice); });
     guarded('instances:export', async (profile,worlds) => {
       editableInstance();
@@ -178,7 +196,6 @@ if (!app.requestSingleInstanceLock()) {
       try { return await skins.install(profile,name); }
       finally { skinInstallPending = false; }
     });
-    guarded('integrations:curseforge', key => preferences.setCurseForgeKey(key));
     guarded('integrations:microsoft-id', id => preferences.setMicrosoftClientId(id));
     guarded('appearance:font-status', () => customFont.status(app.getPath('userData')));
     guarded('appearance:font-select', async () => {
@@ -197,7 +214,16 @@ if (!app.requestSingleInstanceLock()) {
       if (url.protocol !== 'https:' || !['modrinth.com','www.curseforge.com'].includes(url.hostname)) throw new Error('Открывать можно только страницы Modrinth и CurseForge.');
       await shell.openExternal(url.href);
     });
+    guarded('catalog:curseforge-website', async (kind, query) => {
+      const sections = { mods: 'mc-mods', modpacks: 'modpacks', shaders: 'shaders', resources: 'texture-packs' };
+      if (!Object.hasOwn(sections, kind)) throw new Error('Неизвестный раздел CurseForge.');
+      const search = typeof query === 'string' ? query.trim().slice(0, 100) : '';
+      const url = new URL('https://www.curseforge.com/minecraft/' + (search ? 'search' : sections[kind]));
+      if (search) { url.searchParams.set('class', sections[kind]); url.searchParams.set('search', search); }
+      await shell.openExternal(url.href);
+    });
     guarded('catalog:download', async request => {
+      if (request?.source === 'curseforge') throw new Error('Скачай файл с официального сайта CurseForge и добавь его в сборку кнопкой «Добавить файлы».');
       if (!request?.profileId) return download.download(request);
       editableInstance(); catalogInstallPending = true;
       try { return await download.download(request); }
