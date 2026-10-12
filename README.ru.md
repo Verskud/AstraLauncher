@@ -1,0 +1,50 @@
+# AstraLauncher 1.0.0
+
+English: [README.md](README.md).
+
+ASTRA — бесплатный лаунчер Minecraft Java Edition для Windows x64. Код проекта открыт по лицензии [MIT](LICENSE). Уведомления сторонних компонентов находятся в [NOTICE.md](NOTICE.md).
+
+[Скачать ASTRA 1.0.0](https://github.com/Verskud/AstraLauncher/releases/tag/v1.0.0) · [Сайт проекта](https://verskud.github.io/AstraLauncher/) · [Сообщить об ошибке](https://github.com/Verskud/AstraLauncher/issues)
+
+## Возможности
+
+- Отдельные сборки с Fabric, Quilt, Forge и NeoForge.
+- Загрузка сборок и модов с Modrinth. Файлы с CurseForge можно добавить в сборку после скачивания с официального сайта.
+- Управление модами, ресурспаками, шейдерами, мирами и резервными копиями.
+- Локальный профиль и Ely.by, предпросмотр скинов.
+- Темы оформления, анимации и пользовательские шрифты.
+
+## Ограничения
+
+- ASTRA поддерживает Windows x64. Сборок для macOS и Linux нет.
+- Вход Microsoft и автоматический импорт сборок CurseForge пока недоступны.
+- Локальный профиль не подтверждает лицензию Minecraft и не подойдёт для серверов, требующих официальную авторизацию.
+- Лаунчер не содержит файлы игры. Minecraft приобретается отдельно.
+- Windows может показать предупреждение: exe не подписан сертификатом издателя.
+
+ASTRA — неофициальный продукт Minecraft, не одобрен Mojang или Microsoft и не связан с ними.
+
+## Разработка
+
+Нужны Node.js 24, pnpm и Windows x64.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm start
+```
+
+```sh
+pnpm check
+pnpm build
+```
+
+Portable exe появится в `release/`. Лицензии компонентов доступны в «Настройки → О приложении».
+
+Исходники сайта находятся в `website/`. Сборка и локальный просмотр:
+
+```sh
+node website/tools/build.mjs
+node website/tools/serve.mjs
+```
+
+GitHub Pages публикует сайт после изменений в `website/`. Exe и контрольная сумма размещаются в GitHub Releases.

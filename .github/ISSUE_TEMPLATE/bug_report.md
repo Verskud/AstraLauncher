@@ -1,28 +1,28 @@
 ---
-name: Ошибка ASTRA
-about: Сообщить о воспроизводимой ошибке без личных данных
+name: Bug report
+about: Report a reproducible issue without sharing personal information
 title: ''
 labels: bug
 assignees: ''
 ---
 
-## Что произошло
+## What happened?
 
-## Как повторить
+## Steps to reproduce
 
 1.
 2.
 
-## Ожидаемое поведение
+## Expected behavior
 
-## Версии
+## Versions
 
-- ASTRA:
+- AstraLauncher:
 - Windows:
 - Minecraft и загрузчик (если относится к игре):
 
-## Скриншот или фрагмент журнала
+## Screenshot or relevant log excerpt
 
-Это публичное обращение. Перед отправкой удалите имена, email, адреса серверов,
-пути с личными данными, пароли и токены. Полную пользовательскую папку не
-прикладывайте. Уязвимости сообщайте через Security → Report a vulnerability.
+This is a public issue. Remove names, email addresses, server addresses, personal
+file paths, passwords, and tokens before posting. Do not attach your full user
+folder. Report security vulnerabilities through Security → Report a vulnerability.
