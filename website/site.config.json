@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "year": 2026,
   "owner": "AstraLauncher",
   "country": "Украина",
@@ -9,7 +9,7 @@
   "downloadReady": true,
   "releaseRepository": "Verskud/AstraLauncher",
   "sourceRepository": "Verskud/AstraLauncher",
-  "filename": "AstraLauncher-1.0.1.exe",
+  "filename": "AstraLauncher-1.0.2.exe",
   "size": "Около 100 МБ",
   "signingNote": "Файл пока не подписан сертификатом издателя; Windows может показать предупреждение.",
   "date": "12 октября 2026"
