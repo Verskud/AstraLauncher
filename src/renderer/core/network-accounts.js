@@ -17,7 +17,16 @@ function networkText(key) { return (networkCopy[currentLanguage()] || networkCop
 icons.server='<rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 7h.01M7 18h.01M12 7h5M12 18h5"/>';
 if (!Array.isArray(state.servers)) state.servers=[];
 const serverResults=new Map();
-let serversRefreshing=false, skinInfo={source:'local',model:'classic',skin:null,cape:null}, skinView='front', skinRequest=0;
+let serversRefreshing=false, skinInfo={source:'local',model:'classic',skin:null,cape:null}, skinView='front', skinYaw=.38, skinRequest=0;
+const skinImages=new Map();
+function skinImage(source){
+ if(!source)return Promise.resolve(null);
+ if(!skinImages.has(source)){
+  if(skinImages.size>4)skinImages.clear();
+  skinImages.set(source,new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=source;}));
+ }
+ return skinImages.get(source);
+}
 function serversPage() {
  return `<section class="page-intro"><div><div class="eyebrow">MINECRAFT JAVA</div><h1>${networkText('servers')}</h1><p>${networkText('intro')}</p></div><div class="network-actions"><button class="button secondary" data-server-refresh ${serversRefreshing?'disabled':''}>${networkText('refresh')}</button><button class="button light" data-server-add>${networkText('add')}</button></div></section><div class="server-list">${state.servers.map(server=>{
  const result=serverResults.get(server.id), online=result?.online;
@@ -50,23 +59,10 @@ async function refreshSkin() {
 }
 async function drawSkin() {
  const canvas=$('#player-skin-canvas');if(!canvas)return;
- const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
- const load=source=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=source;});
- const scale=8, baseX=46,baseY=35,back=skinView==='back';
- const draw=(image,sx,sy,w,h,x,y,dw=w)=>ctx.drawImage(image,sx,sy,w,h,baseX+x*scale,baseY+y*scale,dw*scale,h*scale);
  try{
- const cape=skinInfo.cape?await load(skinInfo.cape):null, image=skinInfo.skin?await load(skinInfo.skin):null;
+ const [image,cape]=await Promise.all([skinImage(skinInfo.skin),skinImage(skinInfo.cape)]);
  if(!canvas.isConnected)return;
- if(back&&cape)draw(cape,12,1,10,16,3,8);
- if(!image){ctx.fillStyle='#9f91c8';ctx.fillRect(baseX+32,baseY,64,64);ctx.fillStyle='#655b87';ctx.fillRect(baseX,baseY+64,128,96);ctx.fillRect(baseX+32,baseY+160,64,96);if(back&&cape)draw(cape,12,1,10,16,3,8);return;}
- draw(image,back?24:8,8,8,8,4,0);draw(image,back?56:40,8,8,8,4,0);
- draw(image,back?32:20,20,8,12,4,8);if(image.height===64)draw(image,back?32:20,36,8,12,4,8);
- const slim=skinInfo.model==='slim', arm=slim?3:4;
- draw(image,back?(slim?51:52):44,20,arm,12,4-arm,8);
- if(image.height===64){draw(image,back?(slim?43:44):36,52,arm,12,12,8);draw(image,back?(slim?51:52):44,36,arm,12,4-arm,8);draw(image,back?(slim?59:60):52,52,arm,12,12,8);}else draw(image,back?52:44,20,4,12,12,8);
- draw(image,back?12:4,20,4,12,4,20);
- if(image.height===64){draw(image,back?28:20,52,4,12,8,20);draw(image,back?12:4,36,4,12,4,20);draw(image,back?12:4,52,4,12,8,20);}else draw(image,back?12:4,20,4,12,8,20);
- if(back&&cape)draw(cape,12,1,10,16,3,8);
+ paintSkin3D(canvas,image,cape,skinInfo.model,skinYaw);
  }catch{const message=$('#skin-preview-message');if(message)message.textContent=networkText('noSkin');}
 }
 const renderBeforeNetwork=render;
@@ -86,7 +82,7 @@ document.addEventListener('click',async event=>{
  if(button.hasAttribute('data-server-remove')){const id=button.dataset.serverRemove;showModal(`<h2>${networkText('removeQuestion')}</h2><button class="button light full" data-server-confirm-remove="${esc(id)}">${networkText('remove')}</button>`);return;}
  if(button.hasAttribute('data-server-confirm-remove')){state.servers=state.servers.filter(item=>item.id!==button.dataset.serverConfirmRemove);save();modal.close();render();return;}
  if(button.hasAttribute('data-server-copy')){const server=state.servers.find(item=>item.id===button.dataset.serverCopy);try{await navigator.clipboard.writeText(server.address);toast(networkText('copied'));}catch(error){toast(humanError(error));}return;}
- if(button.hasAttribute('data-skin-view')){skinView=button.dataset.skinView;render();return;}
+ if(button.hasAttribute('data-skin-view')){skinView=button.dataset.skinView;skinYaw=skinView==='front'?.38:Math.PI+.38;render();return;}
  const action=['skinImport','skinClear','skinInstall'].find(key=>key in button.dataset);if(!action)return;
  const pack=state.packs.find(item=>item.id===$('#skin-instance')?.value);
  button.disabled=true;
@@ -96,6 +92,19 @@ document.addEventListener('click',async event=>{
  if(action==='skinInstall'){const result=await window.astraDesktop.installPlayerSkins({id:pack.id,loader:pack.loader,version:pack.version},skinPlayerName());rememberDownloads([{...result,name:'CustomSkinLoader',source:'modrinth'},...(result.installedDependencies||[])]);await refreshInstalled(pack.id);toast(networkText('done'));}
  }catch(error){toast(humanError(error));const message=$('#skin-operation-status');if(message)message.textContent=humanError(error);}finally{if(button.isConnected)button.disabled=false;}
 });
+let skinDrag=null;
+document.addEventListener('pointerdown',event=>{
+ if(event.target.id!=='player-skin-canvas')return;
+ skinDrag={id:event.pointerId,x:event.clientX,yaw:skinYaw};
+ event.target.setPointerCapture(event.pointerId);
+});
+document.addEventListener('pointermove',event=>{
+ if(!skinDrag||event.pointerId!==skinDrag.id)return;
+ skinYaw=skinDrag.yaw+(event.clientX-skinDrag.x)*.015;
+ drawSkin();
+});
+document.addEventListener('pointerup',event=>{if(skinDrag?.id===event.pointerId)skinDrag=null;});
+document.addEventListener('pointercancel',event=>{if(skinDrag?.id===event.pointerId)skinDrag=null;});
 document.addEventListener('change',async event=>{
  if(!['skin-source','skin-model'].includes(event.target.id))return;
  try{skinInfo=await window.astraDesktop.playerSkinSource($('#skin-source').value,$('#skin-model').value);skinRequest++;render();refreshSkin();}catch(error){toast(humanError(error));}

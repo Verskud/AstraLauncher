@@ -19,10 +19,14 @@ async function run(){
  await page.locator('[data-server-edit]').click();await page.locator('#server-form [name=name]').fill('Updated server');await page.locator('#server-form button').click();assert.equal(await page.locator('.server-detail h2').innerText(),'Updated server');
  await page.locator('[data-page=accounts]').click();await page.locator('#player-skin-canvas').waitFor();
  await page.evaluate(async()=>{const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d');ctx.fillStyle='#f00';ctx.fillRect(8,8,8,8);ctx.fillStyle='#00f';ctx.fillRect(24,8,8,8);skinInfo={source:'local',model:'classic',skin:canvas.toDataURL(),cape:null};render();await drawSkin();});
- const pixel=()=>page.evaluate(()=>[...document.querySelector('#player-skin-canvas').getContext('2d').getImageData(90,50,1,1).data]);assert.deepEqual(await pixel(),[255,0,0,255]);
- await page.locator('[data-skin-view=back]').click();await page.evaluate(()=>drawSkin());assert.deepEqual(await pixel(),[0,0,255,255]);
+ const hasColor=color=>page.evaluate(color=>{const canvas=document.querySelector('#player-skin-canvas');const bytes=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;const dominant=color.findIndex(value=>value===255);for(let i=0;i<bytes.length;i+=4)if(bytes[i+dominant]>120&&bytes[i+dominant]>bytes[i+(dominant+1)%3]*2&&bytes[i+dominant]>bytes[i+(dominant+2)%3]*2&&bytes[i+3]===255)return true;return false;},color);
+ assert.equal(await hasColor([255,0,0]),true);
+ const frontImage=await page.locator('#player-skin-canvas').evaluate(canvas=>canvas.toDataURL());
+ await page.locator('#player-skin-canvas').dragTo(page.locator('#player-skin-canvas'),{sourcePosition:{x:50,y:150},targetPosition:{x:170,y:150}});
+ assert.notEqual(await page.locator('#player-skin-canvas').evaluate(canvas=>canvas.toDataURL()),frontImage);
+ await page.locator('[data-skin-view=back]').click();await page.evaluate(()=>drawSkin());assert.equal(await hasColor([0,0,255]),true);
  await page.evaluate(async()=>{const canvas=document.createElement('canvas');canvas.width=64;canvas.height=32;const ctx=canvas.getContext('2d');ctx.fillStyle='#0f0';ctx.fillRect(12,1,10,16);skinInfo={source:'local',model:'classic',skin:null,cape:canvas.toDataURL()};render();await drawSkin();});
- assert.deepEqual(await page.evaluate(()=>[...document.querySelector('#player-skin-canvas').getContext('2d').getImageData(90,110,1,1).data]),[0,255,0,255]);
+ assert.equal(await hasColor([0,255,0]),true);
  await page.evaluate(()=>{window.astraDesktop.listInstalledFiles=async profileId=>[{path:'C:/test/CustomSkinLoader.jar',filename:'CustomSkinLoader.jar',kind:'mods',profileId}];});
  await page.locator('[data-skin-install]').click();await page.waitForFunction(()=>state.downloads?.some(item=>item.name==='CustomSkinLoader'));
  for(const locale of ['ru','en','de','fr','es','ko','ja','zh-CN','zh-TW','ar','de-CH','nb']){
