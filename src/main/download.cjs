@@ -34,7 +34,7 @@ function assertProject(request) {
 }
 
 async function api(url, key, signal) {
-  const headers = { 'User-Agent': 'AstraLauncher/0.9.25' };
+  const headers = { 'User-Agent': 'AstraLauncher/0.9.26' };
   if (key) headers['x-api-key'] = key;
   return withDownloadResponse(url, { headers, signal }, async (response, touch) => {
   if (!response.ok) throw new Error(`Источник файлов ответил кодом ${response.status}.`);
@@ -53,13 +53,13 @@ async function resolveModrinth(request, signal) {
   if (request.versionId && versions[0].project_id !== request.id) throw new Error('Версия принадлежит другому проекту.');
   const eligible = versions.filter(v => (!request.gameVersion || v.game_versions?.includes(request.gameVersion)) && (!loader || v.loaders?.includes(loader)) && (request.kind === 'modpacks' ? v.files?.some(f => /\.mrpack$/i.test(f.filename || '')) : v.files?.length));
   const version = eligible.find(v => v.version_type === 'release') || eligible[0];
-  if (!version) throw new Error('Для выбранной версии Minecraft и загрузчика нет файла.');
+  if (!version) throw Object.assign(new Error('Для выбранной версии Minecraft и загрузчика нет файла.'), { code: 'NO_COMPATIBLE_VERSION' });
   const file = request.kind === 'modpacks' ? version.files.find(f => /\.mrpack$/i.test(f.filename || '')) : version.files.find(f => f.primary) || version.files[0];
   if (!file) throw new Error('У выбранной версии нет файла .mrpack.');
   const downloadUrl = new URL(file.url);
   if (downloadUrl.protocol !== 'https:' || downloadUrl.hostname !== 'cdn.modrinth.com') throw new Error('Неожиданный адрес файла Modrinth.');
   if (request.kind === 'modpacks' && !/^[a-f0-9]{128}$/i.test(file.hashes?.sha512 || '')) throw new Error('У сборки отсутствует контрольная сумма SHA-512.');
-  return { url: downloadUrl.href, filename: file.filename, size: file.size, sha512: file.hashes?.sha512, version: version.version_number, required: (version.dependencies || []).filter(d => d.dependency_type === 'required') };
+  return { url: downloadUrl.href, filename: file.filename, size: file.size, sha512: file.hashes?.sha512, version: version.version_number, versionId: version.id, required: (version.dependencies || []).filter(d => d.dependency_type === 'required') };
 }
 
 async function fetchResolvedToFile(resolved, target, signal, onProgress = () => {}, onRetry = () => {}) {

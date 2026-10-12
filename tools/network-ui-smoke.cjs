@@ -40,6 +40,26 @@ async function run(){
   window.astraDesktop.elySignIn=async()=>({connected:true,name:'ElyPlayer'});window.astraDesktop.elyDisconnect=async()=>({connected:false});window.astraDesktop.elyCancel=async()=>{};
   selectedPack=state.packs[0].id;packTab='mods';go('pack');
  });
+ await page.evaluate(()=>{
+  let installed=false;
+  window.astraDesktop.friendsPlayPlan=async()=>({tunnel:{id:'qANg5Jrr',name:'e4mc',version:'5',installed},local:{id:'pimmstPB',name:'OfflineLAN',version:'2',installed}});
+  window.astraDesktop.installFriendsPlay=async(profile,localProfiles)=>{window.testFriendsRequest={profile,localProfiles};installed=true;return{ready:true,installed:[{filename:'e4mc.jar',name:'e4mc',kind:'mods',profileId:profile.id}]};};
+ });
+ await page.locator('[data-friends-play]').click();await page.locator('#friends-install-form').waitFor();assert.equal(await page.locator('#friends-local-profiles').isChecked(),true);
+ await page.locator('#friends-install-form button').click();await page.locator('.friends-panel [data-launch]').waitFor();
+ if(process.env.ASTRA_FRIENDS_SCREENSHOT)await page.locator('#modal').screenshot({path:process.env.ASTRA_FRIENDS_SCREENSHOT,animations:'disabled'});
+ const friendsRequest=await page.evaluate(()=>window.testFriendsRequest);assert.equal(friendsRequest.profile.id,'00000000-0000-0000-0000-000000000001');assert.equal(friendsRequest.localProfiles,true);
+ await page.locator('#modal').evaluate(element=>element.close());
+ await page.evaluate(()=>{window.astraDesktop.friendsPlayPlan=()=>new Promise(resolve=>window.testFriendsResolve=resolve);});
+ await page.locator('[data-friends-play]').click();await page.locator('.friends-panel').waitFor();await page.locator('#modal').evaluate(element=>element.close());
+ await page.evaluate(()=>window.testFriendsResolve({reason:'vanilla',tunnel:null,local:null}));await page.waitForFunction(()=>!document.querySelector('#modal').open);
+ await page.evaluate(()=>{window.astraDesktop.friendsPlayPlan=async()=>({tunnel:{id:'qANg5Jrr',name:'e4mc',version:'5',installed:false},local:null});});
+ await page.locator('[data-friends-play]').click();await page.locator('#friends-local-profiles').waitFor();assert.equal(await page.locator('#friends-local-profiles').isChecked(),false);assert.equal(await page.locator('#friends-local-profiles').isDisabled(),true);
+ await page.locator('#modal').evaluate(element=>element.close());await page.waitForFunction(()=>!document.querySelector('#modal').open);
+ for(const locale of ['ru','en','de','fr','es','ko','ja','zh-CN','zh-TW','ar','de-CH','nb']){
+  const missing=await page.evaluate(locale=>{state.language=locale;return friendsKeys.filter(key=>friendsText(key)===key);},locale);assert.deepEqual(missing,[]);
+ }
+ await page.evaluate(()=>{state.language='ru';render();});
  await page.evaluate(()=>refreshInstalled(selectedPack));await page.evaluate(()=>render());await page.locator('[data-instance-toggle]').click();await page.waitForFunction(()=>document.querySelector('.mod-list-item.is-disabled'));assert.equal(await page.locator('[data-instance-toggle]').isEnabled(),true);await page.locator('[data-instance-toggle]').click();await page.waitForFunction(()=>!document.querySelector('.mod-list-item.is-disabled'));
  await page.locator('[data-instance-updates]').click();await page.locator('.updates-list').waitFor();await page.locator('#modal').evaluate(element=>element.close());
  await page.locator('[data-instance-clone]').click();await page.locator('#clone-instance-form [name=name]').fill('Cloned instance');await page.locator('#clone-instance-form button').click();await page.waitForFunction(()=>state.packs.some(pack=>pack.name==='Cloned instance'));

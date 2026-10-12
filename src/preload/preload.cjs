@@ -26,6 +26,14 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   selectPlayerTexture: kind => ipcRenderer.invoke('skins:select',kind),
   removePlayerTexture: kind => ipcRenderer.invoke('skins:remove',kind),
   installPlayerSkins: (profile,name) => ipcRenderer.invoke('skins:install',profile,name),
+  friendsPlayPlan: profile => ipcRenderer.invoke('friends:plan',profile),
+  installFriendsPlay: (profile,localProfiles) => ipcRenderer.invoke('friends:install',profile,localProfiles),
+  onFriendsPlayProgress: callback => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event,progress) => callback(progress);
+    ipcRenderer.on('friends:progress',listener);
+    return () => ipcRenderer.removeListener('friends:progress',listener);
+  },
   customFontStatus: () => ipcRenderer.invoke('appearance:font-status'),
   selectCustomFont: () => ipcRenderer.invoke('appearance:font-select'),
   resetCustomFont: () => ipcRenderer.invoke('appearance:font-reset'),

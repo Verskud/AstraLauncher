@@ -17,6 +17,7 @@ const customFont = require('./custom-font.cjs');
 const { createServerMonitor, parseAddress } = require('./server-status.cjs');
 const { createPlayerSkins } = require('./player-skins.cjs');
 const { createInstanceTools } = require('./instance-tools.cjs');
+const { createFriendsPlay } = require('./friends-play.cjs');
 const ely = require('./ely-account.cjs');
 
 const APP_ID = 'app.astralauncher.desktop';
@@ -131,8 +132,17 @@ if (!app.requestSingleInstanceLock()) {
     guarded('ely:manage', () => shell.openExternal('https://ely.by/skins'));
     const checkServer = createServerMonitor();
     const instances = createInstanceTools(app.getPath('userData'), { download: request => download.download(request), nativeImage: require('electron').nativeImage });
-    const editableInstance = () => { if (launchPending || game.status().running || skinInstallPending || instances.isBusy()) throw new Error('Дождись завершения операции и закрой игру перед изменением сборки.'); };
-    let skinInstallPending = false;
+    const editableInstance = () => { if (launchPending || game.status().running || skinInstallPending || friendsInstallPending || catalogInstallPending || instances.isBusy()) throw new Error('Дождись завершения операции и закрой игру перед изменением сборки.'); };
+    let skinInstallPending = false, friendsInstallPending = false, catalogInstallPending = false;
+    const friends = createFriendsPlay({ resolve: download.resolveModrinth, download: download.download, listInstalled: download.listInstalled, onProgress: progress => {
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('friends:progress', progress);
+    } });
+    guarded('friends:plan', profile => friends.plan(profile));
+    guarded('friends:install', async (profile,localProfiles) => {
+      editableInstance(); friendsInstallPending = true;
+      try { return await friends.install(profile,localProfiles === true); }
+      finally { friendsInstallPending = false; }
+    });
     const skins = createPlayerSkins(app.getPath('userData'), { download: request => download.download(request), decodePng: bytes => !require('electron').nativeImage.createFromBuffer(bytes).isEmpty() });
     guarded('servers:validate', value => parseAddress(value));
     guarded('servers:status', value => checkServer(value));
@@ -159,6 +169,8 @@ if (!app.requestSingleInstanceLock()) {
       return result.canceled || !result.filePaths[0] ? null : skins.importTexture(result.filePaths[0],kind);
     });
     guarded('skins:install', async (profile,name) => {
+      if (friendsInstallPending) throw new Error('Дождись установки игры с друзьями.');
+      if (catalogInstallPending) throw new Error('Дождись установки мода.');
       if (skinInstallPending) throw new Error('Поддержка скинов уже устанавливается.');
       if (instances.isBusy()) throw new Error('Дождись завершения операции со сборкой.');
       if (launchPending || game.status().running) throw new Error('Закрой игру перед изменением скинов сборки.');
@@ -185,7 +197,12 @@ if (!app.requestSingleInstanceLock()) {
       if (url.protocol !== 'https:' || !['modrinth.com','www.curseforge.com'].includes(url.hostname)) throw new Error('Открывать можно только страницы Modrinth и CurseForge.');
       await shell.openExternal(url.href);
     });
-    guarded('catalog:download', request => { if(request?.profileId)editableInstance();return download.download(request); });
+    guarded('catalog:download', async request => {
+      if (!request?.profileId) return download.download(request);
+      editableInstance(); catalogInstallPending = true;
+      try { return await download.download(request); }
+      finally { catalogInstallPending = false; }
+    });
     const modpacks = createModpackInstaller({ userData: app.getPath('userData'), onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('modpack:progress', progress);
     } });
@@ -231,7 +248,7 @@ if (!app.requestSingleInstanceLock()) {
       return true;
     });
     guarded('game:remove-instance', async profileId => {
-      if (instances.isBusy() || skinInstallPending || launchPending) throw new Error('Дождись завершения операции со сборкой.');
+      if (instances.isBusy() || skinInstallPending || friendsInstallPending || catalogInstallPending || launchPending) throw new Error('Дождись завершения операции со сборкой.');
       const folder = require('./game-loader.cjs').instanceFolder(app.getPath('userData'), profileId);
       if (game.status().running && game.status().profileId === profileId) throw new Error('Закрой игру перед удалением сборки.');
       await require('node:fs/promises').rm(folder, { recursive: true, force: true });
@@ -260,6 +277,8 @@ if (!app.requestSingleInstanceLock()) {
     guarded('game:launch', async profile => {
       if (instances.isBusy()) throw new Error('Дождись завершения операции со сборкой.');
       if (skinInstallPending) throw new Error('Дождись установки поддержки скинов.');
+      if (friendsInstallPending) throw new Error('Дождись установки игры с друзьями.');
+      if (catalogInstallPending) throw new Error('Дождись установки мода.');
       if (launchPending || game.status().running) throw new Error('Игра уже запускается или запущена.');
       if (profile?.autoBackup === true) {
         if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', { phase: 'backup', message: 'Создаём резервную копию миров…' });

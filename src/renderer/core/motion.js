@@ -57,6 +57,7 @@ let dialogExit;
 let dialogCloseTimer;
 modal.close = function (returnValue) {
   if (!modal.open || dialogExit) return;
+  modal.dispatchEvent(new Event('astra:dialog-closing'));
   dialogEntrance?.cancel();
   if (!motionAllowed()) { closeDialogImmediately(returnValue); return; }
   dialogExit = modal.animate([
