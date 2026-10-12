@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   downloadProject: request => ipcRenderer.invoke('catalog:download', request),
   installCatalogModpack: request => ipcRenderer.invoke('modpack:catalog-install', request),
   importLocalModpack: () => ipcRenderer.invoke('modpack:local-import'),
+  completeLocalModpack: (token, settings) => ipcRenderer.invoke('modpack:local-complete', token, settings),
   cancelModpackInstall: () => ipcRenderer.invoke('modpack:cancel'),
   recoverModpacks: () => ipcRenderer.invoke('modpack:recover'),
   onModpackProgress: callback => {

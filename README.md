@@ -1,13 +1,14 @@
-# AstraLauncher 1.0.0
+# AstraLauncher 1.0.1
 
 A free, independent Minecraft: Java Edition launcher for Windows x64. The project is open source under the [MIT License](LICENSE). Third-party notices are available in [NOTICE.md](NOTICE.md). Russian documentation: [README.ru.md](README.ru.md).
 
-[Download AstraLauncher 1.0.0](https://github.com/Verskud/AstraLauncher/releases/tag/v1.0.0) · [Project website](https://verskud.github.io/AstraLauncher/) · [Report a bug](https://github.com/Verskud/AstraLauncher/issues)
+[Download AstraLauncher](https://github.com/Verskud/AstraLauncher/releases/latest) · [Project website](https://verskud.github.io/AstraLauncher/) · [Report a bug](https://github.com/Verskud/AstraLauncher/issues)
 
 ## Features
 
 - Create separate instances with Fabric, Quilt, Forge, and NeoForge.
 - Browse Modrinth modpacks and mods. Files downloaded from the official CurseForge website can be added to an instance.
+- Import CurseForge ZIP manifests, Modrinth `.mrpack`, Prism / MultiMC exports, ASTRA ZIP, or a zipped game folder. Format detection uses archive contents. CurseForge files are fetched from the official website; unavailable files can be supplied manually during installation.
 - Manage mods, resource packs, shaders, worlds, and backups.
 - Use a local profile or Ely.by and preview player skins.
 - Customize themes, animations, and fonts.
@@ -15,7 +16,7 @@ A free, independent Minecraft: Java Edition launcher for Windows x64. The projec
 ## Limitations
 
 - AstraLauncher currently supports Windows x64. Builds for macOS and Linux are not available.
-- Microsoft sign-in and automatic CurseForge modpack import are not available yet.
+- Microsoft sign-in is not available yet. CurseForge catalog browsing opens its official website; downloaded modpack ZIPs can be imported.
 - A local profile does not verify Minecraft ownership and cannot access servers that require official authentication.
 - The launcher does not include Minecraft game files. Minecraft must be purchased separately.
 - Windows may show a warning because the executable is not signed with a publisher certificate.

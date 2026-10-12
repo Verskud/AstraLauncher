@@ -87,7 +87,7 @@ function projectModal(index) {
   if (!item) return;
   if (item.kind === 'modpacks') {
     const supported = item.source === 'modrinth';
-    showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · сборка</span><h2 class="project-name">${esc(item.name)}</h2><p class="project-description">${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><div class="info-box">${supported?'Astra создаст отдельную сборку в своей библиотеке, скачает моды и настройки из .mrpack. При первом запуске дополнительно установятся Minecraft и загрузчик.':'Импорт сборок CurseForge добавим позже. Сейчас устанавливаются сборки Modrinth и локальные .mrpack.'}</div>${supported?`<button class="button light full" data-modpack-catalog="${index}">Установить сборку ${icon('down')}</button>`:''}<button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button>`);
+    showModal(`<span class="modal-mark">${icon('cube')}</span><span class="eyebrow">${esc(item.source.toUpperCase())} · сборка</span><h2 class="project-name">${esc(item.name)}</h2><p class="project-description">${esc(item.description)}</p><div class="detail-tags"><span>Автор: ${esc(item.author||'—')}</span><span>${Number(item.downloads||0).toLocaleString('ru-RU')} загрузок</span></div><div class="info-box">${supported?'Astra создаст отдельную сборку в своей библиотеке, скачает моды и настройки из .mrpack. При первом запуске дополнительно установятся Minecraft и загрузчик.':packImportText(0)}</div>${supported?`<button class="button light full" data-modpack-catalog="${index}">Установить сборку ${icon('down')}</button>`:''}<button class="button secondary full" data-live-open="${index}">Страница проекта ${icon('arrow')}</button>`);
     return;
   }
   const choices = item.kind === 'modpacks' ? [] : state.packs.filter(p => item.kind !== 'mods' || p.loader !== 'Vanilla' && loaderAvailable(p.version,p.loader));
@@ -126,6 +126,7 @@ async function installModpack(run) {
   try {
     const result = await run();
     if (!result) { modal.close(); return; }
+    if (result.needsSettings) { packImportSettings(result); return; }
     const profile = result.profile;
     if (!state.packs.some(item => item.id === profile.id)) state.packs.push(profile);
     save();
@@ -134,11 +135,40 @@ async function installModpack(run) {
     packTab = 'mods';
     modal.close();
     go('pack');
-    toast(`Сборка «${profile.name}» установлена: ${result.files} файлов и ${result.overrides} настроек`);
+    toast(`Сборка «${profile.name}» установлена: ${result.files || 0} файлов и ${result.overrides || 0} настроек`);
   } catch (error) {
     showModal(`<h2>Не удалось установить сборку</h2><p>${esc(humanError(error))}</p><div class="info-box">Неполная сборка удалена. Повтори попытку или выбери другой файл.</div><button class="button light full" data-action="close">Закрыть</button>`);
   } finally { modpackPending = false; }
 }
+const packImportCopy = {
+  ru: ['Выбери ZIP или .mrpack. Поддерживаются CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA и ZIP игровой папки. Недоступные файлы CurseForge можно скачать с официальной страницы и выбрать во время установки.', 'Параметры ZIP-сборки', 'В архиве есть игровые файлы, но не указаны Minecraft и загрузчик. Выбери версии, для которых сделана эта сборка.', 'Название', 'Загрузчик', 'Версия загрузчика (необязательно)', 'Оставь пустым для автоматического выбора'],
+  en: ['Choose a ZIP or .mrpack. Supports CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA, and zipped game folders. Unavailable CurseForge files can be downloaded from their official pages and selected during installation.', 'ZIP instance settings', 'This archive has game files but no Minecraft or loader metadata. Select the versions this instance was made for.', 'Name', 'Mod loader', 'Loader version (optional)', 'Leave empty to choose automatically'],
+  de: ['Wähle eine ZIP- oder .mrpack-Datei. Unterstützt werden CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA und gepackte Spielordner. Nicht verfügbare CurseForge-Dateien kannst du von ihrer offiziellen Seite herunterladen und während der Installation auswählen.', 'Einstellungen der ZIP-Instanz', 'Das Archiv enthält Spieldateien, aber keine Angaben zu Minecraft oder Modlader. Wähle die Versionen, für die diese Instanz erstellt wurde.', 'Name', 'Modlader', 'Version des Modladers (optional)', 'Für automatische Auswahl leer lassen'],
+  fr: ['Choisis un ZIP ou un .mrpack. Formats acceptés : CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA et dossiers de jeu compressés. Les fichiers CurseForge indisponibles peuvent être téléchargés depuis leur page officielle puis sélectionnés pendant l’installation.', 'Paramètres de l’instance ZIP', 'Cette archive contient des fichiers de jeu sans indiquer la version de Minecraft ni le chargeur. Choisis les versions prévues pour cette instance.', 'Nom', 'Chargeur de mods', 'Version du chargeur (facultatif)', 'Laisser vide pour une sélection automatique'],
+  es: ['Elige un ZIP o .mrpack. Se admiten CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA y carpetas de juego comprimidas. Los archivos de CurseForge no disponibles pueden descargarse de sus páginas oficiales y seleccionarse durante la instalación.', 'Ajustes de la instancia ZIP', 'El archivo contiene archivos del juego, pero no indica la versión de Minecraft ni el cargador. Elige las versiones para las que se creó esta instancia.', 'Nombre', 'Cargador de mods', 'Versión del cargador (opcional)', 'Dejar vacío para elegir automáticamente'],
+  pt: ['Escolhe um ZIP ou .mrpack. São suportados CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA e pastas de jogo compactadas. Os ficheiros CurseForge indisponíveis podem ser descarregados das páginas oficiais e selecionados durante a instalação.', 'Definições da instância ZIP', 'O arquivo contém ficheiros de jogo, mas não indica a versão do Minecraft nem o carregador. Escolhe as versões para as quais esta instância foi criada.', 'Nome', 'Carregador de mods', 'Versão do carregador (opcional)', 'Deixar vazio para seleção automática'],
+  uk: ['Вибери ZIP або .mrpack. Підтримуються CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA та ZIP ігрової папки. Недоступні файли CurseForge можна завантажити з офіційної сторінки та вибрати під час установлення.', 'Параметри ZIP-збірки', 'В архіві є ігрові файли, але не вказані Minecraft і завантажувач. Вибери версії, для яких створено цю збірку.', 'Назва', 'Завантажувач', 'Версія завантажувача (необов’язково)', 'Залиш порожнім для автоматичного вибору'],
+  pl: ['Wybierz ZIP lub .mrpack. Obsługiwane są CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA i spakowane foldery gry. Niedostępne pliki CurseForge można pobrać z oficjalnych stron i wybrać podczas instalacji.', 'Ustawienia instancji ZIP', 'Archiwum zawiera pliki gry, ale nie podaje wersji Minecraft ani loadera. Wybierz wersje, dla których utworzono tę instancję.', 'Nazwa', 'Loader modów', 'Wersja loadera (opcjonalnie)', 'Pozostaw puste, aby wybrać automatycznie'],
+  'zh-CN': ['选择 ZIP 或 .mrpack。支持 CurseForge（manifest.json）、Modrinth、Prism / MultiMC、ASTRA 和压缩的游戏文件夹。无法自动下载的 CurseForge 文件可从官方页面下载，并在安装时选择。', 'ZIP 实例设置', '此压缩包包含游戏文件，但未指定 Minecraft 和模组加载器版本。请选择此实例使用的版本。', '名称', '模组加载器', '加载器版本（可选）', '留空以自动选择'],
+  'zh-TW': ['選擇 ZIP 或 .mrpack。支援 CurseForge（manifest.json）、Modrinth、Prism / MultiMC、ASTRA 和壓縮的遊戲資料夾。無法自動下載的 CurseForge 檔案可從官方頁面下載，並在安裝時選取。', 'ZIP 實例設定', '此壓縮檔包含遊戲檔案，但未指定 Minecraft 和模組載入器版本。請選擇此實例使用的版本。', '名稱', '模組載入器', '載入器版本（選填）', '留空以自動選擇'],
+  ar: ['اختر ZIP أو .mrpack. يدعم CurseForge ‏(manifest.json) وModrinth وPrism / MultiMC وASTRA ومجلدات اللعبة المضغوطة. يمكن تنزيل ملفات CurseForge غير المتاحة من صفحاتها الرسمية واختيارها أثناء التثبيت.', 'إعدادات نسخة ZIP', 'يحتوي الأرشيف على ملفات اللعبة لكنه لا يحدد إصدار Minecraft أو محمّل التعديلات. اختر الإصدارات التي أُنشئت لها هذه النسخة.', 'الاسم', 'محمّل التعديلات', 'إصدار المحمّل (اختياري)', 'اتركه فارغًا للاختيار التلقائي'],
+  nb: ['Velg ZIP eller .mrpack. Støtter CurseForge (manifest.json), Modrinth, Prism / MultiMC, ASTRA og pakkede spillmapper. Utilgjengelige CurseForge-filer kan lastes ned fra de offisielle sidene og velges under installasjonen.', 'Innstillinger for ZIP-instans', 'Arkivet inneholder spillfiler, men ingen Minecraft- eller modlasterversjon. Velg versjonene denne instansen ble laget for.', 'Navn', 'Modlaster', 'Modlasterversjon (valgfritt)', 'La stå tomt for automatisk valg'],
+  ko: ['ZIP 또는 .mrpack을 선택하세요. CurseForge(manifest.json), Modrinth, Prism / MultiMC, ASTRA 및 압축된 게임 폴더를 지원합니다. 자동으로 받을 수 없는 CurseForge 파일은 공식 페이지에서 내려받아 설치 중에 선택할 수 있습니다.', 'ZIP 인스턴스 설정', '이 압축 파일에는 게임 파일이 있지만 Minecraft 및 모드 로더 버전 정보가 없습니다. 이 인스턴스에 맞는 버전을 선택하세요.', '이름', '모드 로더', '로더 버전(선택 사항)', '비워 두면 자동으로 선택합니다'],
+  ja: ['ZIP または .mrpack を選択してください。CurseForge（manifest.json）、Modrinth、Prism / MultiMC、ASTRA、圧縮されたゲームフォルダーに対応しています。自動取得できない CurseForge ファイルは公式ページからダウンロードし、インストール中に選択できます。', 'ZIP インスタンスの設定', 'このアーカイブにはゲームファイルがありますが、Minecraft と MOD ローダーのバージョン情報がありません。このインスタンスに合ったバージョンを選択してください。', '名前', 'MOD ローダー', 'ローダーのバージョン（任意）', '空欄にすると自動で選択します'],
+};
+function packImportText(index) { return (packImportCopy[currentLanguage() === 'de-CH' ? 'de' : currentLanguage()] || packImportCopy.en)[index]; }
+function packImportSettings(info) {
+  showModal(`<h2>${packImportText(1)}</h2><p>${packImportText(2)}</p><form id="import-pack-settings" data-token="${esc(info.token)}"><label>${packImportText(3)}<input name="name" value="${esc(info.name)}" maxlength="48" required></label>${versionPickerMarkup()}<label>${packImportText(4)}<select name="loader" id="create-loader">${profileLoaders.map(name => `<option>${name}</option>`).join('')}</select></label><label>${packImportText(5)}<input name="loaderVersion" maxlength="80" placeholder="${packImportText(6)}"></label><button type="submit" class="button light full" disabled>${t('importAction')}</button></form>`);
+  activateVersionPicker();
+}
+document.addEventListener('submit', event => {
+  if (event.target.id !== 'import-pack-settings') return;
+  event.preventDefault();
+  const form = event.target, data = new FormData(form);
+  const settings = { name: String(data.get('name')).trim(), version: String(data.get('version')), loader: String(data.get('loader')), loaderVersion: String(data.get('loaderVersion')).trim() };
+  if (!settings.name || !settings.version || !loaderAvailable(settings.version, settings.loader)) return;
+  installModpack(() => window.astraDesktop.completeLocalModpack(form.dataset.token, settings));
+});
 modal.addEventListener('cancel', event => { if (modpackPending) { event.preventDefault(); modpackCancelPrompt(); } });
 modal.addEventListener('click', event => { if (modpackPending && event.target === modal) { event.preventDefault(); event.stopImmediatePropagation(); modpackCancelPrompt(); } }, true);
 window.astraDesktop.recoverModpacks().then(profiles => {

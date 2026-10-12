@@ -6,6 +6,8 @@ const { loaderAvailable } = require('./game-loader.cjs');
 const { withDownloadResponse } = require('./download-response.cjs');
 const { writeResponseFile, retryDownload } = require('./download-stream.cjs');
 const { downloadRanges } = require('./download-ranges.cjs');
+const { describeArchive, inspectArchive } = require('./pack-formats.cjs');
+const { downloadCurseForgeFile } = require('./curseforge-pack.cjs');
 
 const allowedSources = new Set(['cdn.modrinth.com', 'github.com', 'raw.githubusercontent.com', 'gitlab.com']);
 const loaderKeys = { 'fabric-loader': 'Fabric', 'quilt-loader': 'Quilt', forge: 'Forge', neoforge: 'NeoForge' };
@@ -57,7 +59,7 @@ async function fetchFile(url, expectedSize, signal, target, hash, onProgress) {
   let address = checkedUrl(url, true);
   if (await downloadRanges(address, target, { size: expectedSize, limit: MAX_FILE, sha512: hash, signal, onProgress })) return;
   for (let redirect = 0; redirect <= 5; redirect++) {
-    const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/1.0.0' } }, async (response, touch) => {
+    const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/1.0.1' } }, async (response, touch) => {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       await response.body?.cancel();
       if (redirect === 5) throw new Error('Слишком много перенаправлений при загрузке.');
@@ -72,7 +74,7 @@ async function fetchFile(url, expectedSize, signal, target, hash, onProgress) {
   }
 }
 
-function createModpackInstaller({ userData, onProgress = () => {} }) {
+function createModpackInstaller({ userData, onProgress = () => {}, manualDownload }) {
   let active = null;
   const root = path.join(userData, 'instances');
   function progress(phase, completed, total, message) { onProgress({ phase, completed, total, message }); }
@@ -94,20 +96,19 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
         filename = path.join(staging, 'pack.mrpack');
         await fs.writeFile(filename, input.bytes);
       }
-      zip = await openZip(filename);
-      const entry = zip.entries.find(item => item.name === 'modrinth.index.json');
-      if (!entry) throw new Error('В архиве нет modrinth.index.json. Нужен файл .mrpack.');
-      const manifest = parseIndex(await zip.read(entry));
-      const overrides = zip.entries.filter(item => !item.isDirectory && (item.name.startsWith('overrides/') || item.name.startsWith('client-overrides/')));
+      zip = await openZip(filename, { maxEntry: 1024 * 1024 * 1024, maxTotal: 8 * 1024 * 1024 * 1024 });
+      const description = await describeArchive(zip, filename, input.settings);
+      if (description.needsSettings) throw new Error('В ZIP нет версии Minecraft и загрузчика. Укажи их в окне импорта.');
+      const manifest = description.type === 'modrinth' ? parseIndex(Buffer.from(JSON.stringify(description.index))) : { ...description.manifest, files: description.manifest.files || [] };
+      const overrides = description.type === 'modrinth' ? ['overrides/', 'client-overrides/'].flatMap(layer => zip.entries.filter(item => !item.isDirectory && item.name.startsWith(description.prefix + layer)).map(entry => ({ entry, path: checkedRelative(entry.name.slice(description.prefix.length + layer.length)) }))) : description.extracted;
       for (const item of overrides) {
-        const relative = checkedRelative(item.name.substring(item.name.indexOf('/') + 1));
-        if (relative.toLowerCase() === 'astra-pack.json') throw new Error('Сборка пытается заменить служебный файл Astra.');
+        if (item.path.toLowerCase() === 'astra-pack.json') throw new Error('Сборка пытается заменить служебный файл Astra.');
       }
       const total = manifest.files.length + overrides.length;
       let completed = 0;
       let receivedBytes = 0, lastReport = 0;
       const transferStarted = Date.now();
-      const totalBytes = manifest.files.reduce((sum, item) => sum + item.size, 0);
+      const totalBytes = manifest.files.reduce((sum, item) => sum + (item.size || 0), 0);
       const transferred = new Map();
       const workersController = new AbortController();
       const workerSignal = AbortSignal.any([controller.signal, workersController.signal]);
@@ -124,6 +125,13 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
       progress('install', 0, total, `Устанавливаем ${manifest.name}…`);
       async function installFile(item) {
         workerSignal.throwIfAborted();
+        if (item.source === 'curseforge') {
+          const label = `CurseForge: ${item.projectID} / ${item.fileID}`;
+          await downloadCurseForgeFile(item, staging, { signal: workerSignal, onProgress: bytes => transferProgress({ path: label }, bytes), manualDownload });
+          completed++;
+          reportTransfer(label);
+          return;
+        }
         const target = path.join(staging, ...item.path.split('/'));
         await fs.mkdir(path.dirname(target), { recursive: true });
         let written = false, lastError;
@@ -151,20 +159,18 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
       if (workersController.signal.aborted) throw workersController.signal.reason;
       const failed = results.find(result => result.status === 'rejected');
       if (failed) throw failed.reason;
-      for (const layer of ['overrides/', 'client-overrides/']) {
-        for (const item of overrides.filter(value => value.name.startsWith(layer))) {
+      for (const item of overrides) {
           if (controller.signal.aborted) throw new Error('Установка отменена.');
-          const relative = checkedRelative(item.name.slice(layer.length));
+          const relative = item.path;
           const target = path.join(staging, ...relative.split('/'));
           await fs.mkdir(path.dirname(target), { recursive: true });
-          await fs.writeFile(target, await zip.read(item));
+          await fs.writeFile(target, await zip.read(item.entry));
           progress('install', ++completed, total, relative);
-        }
       }
       await zip.close(); zip = null;
       if (input.bytes || input.temporary) await fs.rm(filename, { force: true });
       if (controller.signal.aborted) throw new Error('Установка отменена.');
-      const profile = { id, name: manifest.name, version: manifest.version, loader: manifest.loader, loaderVersion: manifest.loaderVersion, art: 'forest', mods: [], last: 'Импортирована', source: input.catalog ? 'modrinth' : 'local-mrpack' };
+      const profile = { id, name: manifest.name, version: manifest.version, loader: manifest.loader, loaderVersion: manifest.loaderVersion, art: manifest.art || 'forest', mods: [], last: 'Импортирована', source: input.catalog ? 'modrinth' : `local-${description.type}` };
       await fs.writeFile(path.join(staging, 'astra-pack.json'), JSON.stringify(profile), { flag: 'wx' });
       try { await fs.rename(staging, final); }
       catch (error) {
@@ -176,7 +182,8 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
         } catch (copyError) { await fs.rm(final, { recursive: true, force: true }).catch(() => {}); throw copyError; }
       }
       progress('complete', total, total, `Сборка ${manifest.name} установлена.`);
-      return { profile, folder: final, files: manifest.files.length, overrides: overrides.length };
+      const bundledFiles = overrides.filter(item => /^(mods|resourcepacks|shaderpacks)\/.+\.(jar|zip)(?:\.disabled)?$/i.test(item.path)).length;
+      return { profile, folder: final, files: manifest.files.length + bundledFiles, overrides: overrides.length - bundledFiles, format: description.type };
     } catch (error) {
       if (controller.signal.aborted) error = new Error('Установка отменена.');
       if (zip) await zip.close().catch(() => {});
@@ -198,7 +205,7 @@ function createModpackInstaller({ userData, onProgress = () => {} }) {
     }
     return profiles;
   }
-  return { install, recover, cancel() { if (!active) return false; active.abort(); return true; } };
+  return { install, recover, inspect: inspectArchive, isBusy: () => !!active, cancel() { if (!active) return false; active.abort(); return true; } };
 }
 
 module.exports = { createModpackInstaller, parseIndex, checkedRelative };

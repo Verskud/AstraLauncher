@@ -16,6 +16,8 @@ For Ely.by, the launcher stores profile name and UUID. Session tokens are encryp
 
 At your request, the launcher connects to Mojang/Microsoft and their CDNs for version manifests, game files, libraries, Java, and public skin lookups; to Fabric, Quilt, Forge, NeoForge, and Maven repositories for loader metadata and libraries; to Modrinth and its CDN for search, project versions, dependencies, and downloads; to Ely.by for the credentials you submit over HTTPS, profile and skin requests; to the official authlib-injector server to download its unmodified Java Agent for Ely.by; and to selected Minecraft servers for status checks and gameplay. CurseForge currently opens in a browser; the launcher does not access its catalog API for users.
 
+When importing a CurseForge ZIP modpack, the launcher requests the exact file IDs listed in manifest.json from CurseForge's official website and forgecdn.net CDN. These services receive your IP address and technical request information. The launcher does not use the CurseForge Core catalog API for users.
+
 These services receive requests directly and process them under their own policies. Installed mods, including CustomSkinLoader and e4mc, may contact additional services. AstraLauncher does not operate those services.
 
 ## Support and deletion

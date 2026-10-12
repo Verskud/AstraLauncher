@@ -134,7 +134,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('ely:manage', () => shell.openExternal('https://ely.by/skins'));
     const checkServer = createServerMonitor();
     const instances = createInstanceTools(app.getPath('userData'), { download: request => download.download(request), nativeImage: require('electron').nativeImage });
-    const editableInstance = () => { if (launchPending || game.status().running || skinInstallPending || friendsInstallPending || catalogInstallPending || instances.isBusy()) throw new Error('Дождись завершения операции и закрой игру перед изменением сборки.'); };
+    const editableInstance = () => { if (launchPending || game.status().running || skinInstallPending || friendsInstallPending || catalogInstallPending || instances.isBusy() || modpacks.isBusy()) throw new Error('Дождись завершения операции и закрой игру перед изменением сборки.'); };
     let skinInstallPending = false, friendsInstallPending = false, catalogInstallPending = false;
     const friends = createFriendsPlay({ resolve: download.resolveModrinth, download: download.download, listInstalled: download.listInstalled, onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('friends:progress', progress);
@@ -188,6 +188,7 @@ if (!app.requestSingleInstanceLock()) {
       return result.canceled || !result.filePaths[0] ? null : skins.importTexture(result.filePaths[0],kind);
     });
     guarded('skins:install', async (profile,name) => {
+      if (modpacks.isBusy()) throw new Error('Дождись завершения импорта сборки.');
       if (friendsInstallPending) throw new Error('Дождись установки игры с друзьями.');
       if (catalogInstallPending) throw new Error('Дождись установки мода.');
       if (skinInstallPending) throw new Error('Поддержка скинов уже устанавливается.');
@@ -230,7 +231,24 @@ if (!app.requestSingleInstanceLock()) {
       try { return await download.download(request); }
       finally { catalogInstallPending = false; }
     });
-    const modpacks = createModpackInstaller({ userData: app.getPath('userData'), onProgress: progress => {
+    let manualPackQueue = Promise.resolve();
+    const modpacks = createModpackInstaller({ userData: app.getPath('userData'), manualDownload: (file, signal) => {
+      const work = manualPackQueue.catch(() => {}).then(async () => {
+        while (true) {
+          signal.throwIfAborted();
+          mainWindow?.webContents.send('modpack:progress', { phase: 'manual', message: `CurseForge: выбери файл ${file.fileID} с официальной страницы.` });
+          const answer = await dialog.showMessageBox(mainWindow, { type: 'info', title: 'Нужен файл CurseForge', message: 'Этот файл нельзя получить автоматически.', detail: `Для сборки нужен именно файл ${file.fileID} проекта ${file.projectID}${file.filename ? ': ' + file.filename : ''}. Открой его официальную страницу, скачай файл и выбери его здесь.\n\n${file.url}`, buttons: ['Открыть страницу файла', 'Выбрать скачанный файл', 'Отменить установку'], defaultId: 0, cancelId: 2 });
+          signal.throwIfAborted();
+          if (answer.response === 2) { modpacks.cancel(); signal.throwIfAborted(); }
+          if (answer.response === 0) { await shell.openExternal(file.url); continue; }
+          const result = await dialog.showOpenDialog(mainWindow, { title: `Файл CurseForge ${file.fileID}`, defaultPath: app.getPath('downloads'), properties: ['openFile'], filters: [{ name: 'Minecraft mod / pack', extensions: ['jar', 'zip'] }] });
+          signal.throwIfAborted();
+          if (!result.canceled && result.filePaths[0]) return result.filePaths[0];
+        }
+      });
+      manualPackQueue = work;
+      return work;
+    }, onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('modpack:progress', progress);
     } });
     guarded('modpack:catalog-install', async request => {
@@ -254,11 +272,26 @@ if (!app.requestSingleInstanceLock()) {
         return { path: filename, temporary: true, catalog: true };
       });
     });
+    let pendingPackImport = null;
     guarded('modpack:local-import', async () => {
-      const result = await dialog.showOpenDialog(mainWindow, { title: 'Выбери сборку', properties: ['openFile'], filters: [{ name: 'Modrinth / ASTRA ZIP', extensions: ['mrpack','zip'] }] });
+      editableInstance();
+      pendingPackImport = null;
+      const result = await dialog.showOpenDialog(mainWindow, { title: 'Выбери сборку', defaultPath: app.getPath('downloads'), properties: ['openFile'], filters: [{ name: 'CurseForge / Modrinth / Prism / ASTRA / ZIP', extensions: ['mrpack','zip'] }] });
       if (result.canceled || !result.filePaths[0]) return null;
-      if (/\.zip$/i.test(result.filePaths[0])) { editableInstance();return {profile:await instances.importZip(result.filePaths[0])}; }
+      editableInstance();
+      const info = await modpacks.inspect(result.filePaths[0]);
+      if (info.needsSettings) {
+        pendingPackImport = { path: result.filePaths[0], token: require('node:crypto').randomUUID() };
+        return { ...info, token: pendingPackImport.token };
+      }
       return modpacks.install({ path: result.filePaths[0] });
+    });
+    guarded('modpack:local-complete', async (token, settings) => {
+      editableInstance();
+      if (!pendingPackImport || token !== pendingPackImport.token) throw new Error('Сначала выбери ZIP-сборку для импорта.');
+      const selected = pendingPackImport;
+      pendingPackImport = null;
+      return modpacks.install({ path: selected.path, settings });
     });
     guarded('modpack:cancel', () => modpacks.cancel());
     guarded('modpack:recover', () => modpacks.recover());
@@ -275,7 +308,7 @@ if (!app.requestSingleInstanceLock()) {
       return true;
     });
     guarded('game:remove-instance', async profileId => {
-      if (instances.isBusy() || skinInstallPending || friendsInstallPending || catalogInstallPending || launchPending) throw new Error('Дождись завершения операции со сборкой.');
+      if (instances.isBusy() || modpacks.isBusy() || skinInstallPending || friendsInstallPending || catalogInstallPending || launchPending) throw new Error('Дождись завершения операции со сборкой.');
       const folder = require('./game-loader.cjs').instanceFolder(app.getPath('userData'), profileId);
       if (game.status().running && game.status().profileId === profileId) throw new Error('Закрой игру перед удалением сборки.');
       await require('node:fs/promises').rm(folder, { recursive: true, force: true });
@@ -302,6 +335,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('minecraft:status', version => installer.status(version));
     guarded('minecraft:cancel', () => installer.cancel());
     guarded('game:launch', async profile => {
+      if (modpacks.isBusy()) throw new Error('Дождись завершения импорта сборки.');
       if (instances.isBusy()) throw new Error('Дождись завершения операции со сборкой.');
       if (skinInstallPending) throw new Error('Дождись установки поддержки скинов.');
       if (friendsInstallPending) throw new Error('Дождись установки игры с друзьями.');

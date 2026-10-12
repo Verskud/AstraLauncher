@@ -13,7 +13,7 @@ const contentCopy = {
   nb: ['Nettsted','Last ned filene fra det offisielle nettstedet og legg dem til i instansen din.','Åpne CurseForge','Målinstans','Velg nedlastede filer','Velg samme Minecraft-versjon og modlaster som i instansen. Mods: .jar; ressurspakker og shaders: .zip. Ikke pakk ut pakkearkivene.','Last ned nødvendige modavhengigheter separat. Shaders krever Iris eller Oculus.','En CurseForge-ZIP med manifest.json inneholder referanser til mods, ikke en komplett instans. Automatisk import er ikke tilgjengelig ennå. Opprett en instans med riktig versjon og modlaster, og legg til nedlastede mods i Mods-fanen.','Opprett en instans først. Velg Fabric, Quilt, Forge eller NeoForge for mods.','Filer lagt til','Allerede installert','Legg til filer','Installer nedlastede filer','Åpne filmappen','Kopierer og kontrollerer…','Aktiver ressurspakker og shaders i Minecraft-innstillingene etter at de er lagt til.','Søk på nettstedet'],
 };
 contentCopy['de-CH'] = contentCopy.de;
-const contentText = key => (contentCopy[currentLanguage()] || contentCopy.en)[contentKeys.indexOf(key)];
+const contentText = key => key === 'packs' ? packImportText(0) : (contentCopy[currentLanguage()] || contentCopy.en)[contentKeys.indexOf(key)];
 let contentImportPending = false;
 
 function contentDestinations(kind, preferredId) {
@@ -30,7 +30,7 @@ function contentInstallForm(kind, preferredId, inDialog = false) {
 
 function curseForgePanel() {
   const search = `<form id="curseforge-search-form" class="search-row"><label class="search">${icon('search')}<input name="query" type="search" maxlength="100" aria-label="${contentText('search')}" placeholder="${contentText('search')}…" value="${esc(liveQuery)}"></label><button class="button light">${contentText('open')} ${icon('arrow')}</button></form>`;
-  const content = catalogType === 'modpacks' ? `<div class="info-box">${contentText('packs')}</div><button class="button secondary" data-action="create">${t('createPack')}</button>` : contentInstallForm(catalogType, catalogTargetPackId);
+  const content = catalogType === 'modpacks' ? `<div class="info-box">${contentText('packs')}</div><button class="button light" data-modpack-local>${t('importAction')} .mrpack / ZIP ${icon('down')}</button>` : contentInstallForm(catalogType, catalogTargetPackId);
   return `${search}<section class="manual-content-panel"><h2>${contentText('title')}</h2>${content}</section>`;
 }
 

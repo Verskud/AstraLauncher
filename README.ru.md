@@ -1,15 +1,16 @@
-# AstraLauncher 1.0.0
+# AstraLauncher 1.0.1
 
 English: [README.md](README.md).
 
 ASTRA — бесплатный лаунчер Minecraft Java Edition для Windows x64. Код проекта открыт по лицензии [MIT](LICENSE). Уведомления сторонних компонентов находятся в [NOTICE.md](NOTICE.md).
 
-[Скачать ASTRA 1.0.0](https://github.com/Verskud/AstraLauncher/releases/tag/v1.0.0) · [Сайт проекта](https://verskud.github.io/AstraLauncher/) · [Сообщить об ошибке](https://github.com/Verskud/AstraLauncher/issues)
+[Скачать AstraLauncher](https://github.com/Verskud/AstraLauncher/releases/latest) · [Сайт проекта](https://verskud.github.io/AstraLauncher/ru/) · [Сообщить об ошибке](https://github.com/Verskud/AstraLauncher/issues)
 
 ## Возможности
 
 - Отдельные сборки с Fabric, Quilt, Forge и NeoForge.
 - Загрузка сборок и модов с Modrinth. Файлы с CurseForge можно добавить в сборку после скачивания с официального сайта.
+- Импорт CurseForge ZIP с манифестом, Modrinth `.mrpack`, экспортов Prism / MultiMC, ASTRA ZIP и ZIP игровой папки. Формат определяется по содержимому. Файлы CurseForge загружаются с официального сайта; недоступные файлы можно выбрать вручную во время установки.
 - Управление модами, ресурспаками, шейдерами, мирами и резервными копиями.
 - Локальный профиль и Ely.by, предпросмотр скинов.
 - Темы оформления, анимации и пользовательские шрифты.
@@ -17,7 +18,7 @@ ASTRA — бесплатный лаунчер Minecraft Java Edition для Wind
 ## Ограничения
 
 - ASTRA поддерживает Windows x64. Сборок для macOS и Linux нет.
-- Вход Microsoft и автоматический импорт сборок CurseForge пока недоступны.
+- Вход Microsoft пока недоступен. Каталог CurseForge открывается на официальном сайте; скачанные ZIP-сборки можно импортировать.
 - Локальный профиль не подтверждает лицензию Minecraft и не подойдёт для серверов, требующих официальную авторизацию.
 - Лаунчер не содержит файлы игры. Minecraft приобретается отдельно.
 - Windows может показать предупреждение: exe не подписан сертификатом издателя.

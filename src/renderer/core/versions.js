@@ -63,7 +63,7 @@ function renderVersionChoices(preferred) {
   select.disabled = !matches.length;
   if (selected) select.value = selected;
   document.querySelector('#version-count').textContent = `${matches.length} / ${minecraftManifest.versions.length} · ${minecraftManifest.source === 'live' ? vLabel(9) : vLabel(8)}`;
-  const submit = document.querySelector('#create-form button[type="submit"]');
+  const submit = document.querySelector('#create-form button[type="submit"], #import-pack-settings button[type="submit"]');
   if (submit) submit.disabled = !matches.length;
   updateLoaderForVersion();
 }

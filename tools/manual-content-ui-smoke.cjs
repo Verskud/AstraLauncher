@@ -14,7 +14,12 @@ const { chromium } = require('C:/Users/Verskud/.cache/codex-runtimes/codex-prima
       window.contentCalls = { searches: [], opens: [], imports: [], installed: [], folders: [] };
       window.astraDesktop = {
         setWindowTheme() {}, integrationsStatus: async () => ({ curseforgeReady: true }),
-        minecraftVersions: async () => ({ versions: [{ id: '1.21.1', type: 'release' }], source: 'bundled' }),
+        minecraftVersions: async () => ({ latest: { release: '1.21.1', snapshot: '1.21.1' }, versions: [{ id: '1.21.1', type: 'release', releaseTime: '2024-08-08T00:00:00Z' }], source: 'live' }),
+        importLocalModpack: async () => ({ needsSettings: true, name: 'Custom ZIP', token: 'selected-archive' }),
+        completeLocalModpack: async (token, settings) => {
+          window.packImportCall = { token, settings };
+          return { profile: { ...fabric, ...settings, id: '00000000-0000-0000-0000-000000000003' }, files: 3, overrides: 2 };
+        },
         recoverModpacks: async () => [], gameStatus: async () => ({ running: false }),
         listInstalledFiles: async id => window.contentCalls.installed.filter(item => item.profileId === id),
         minecraftInstallStatus: async () => ({ phase: 'idle' }),
@@ -80,7 +85,17 @@ const { chromium } = require('C:/Users/Verskud/.cache/codex-runtimes/codex-prima
     await page.evaluate(() => { catalogType = 'modpacks'; render(); });
     assert.equal(await page.locator('#manual-content-form').count(), 0);
     assert.match(await page.locator('.manual-content-panel').innerText(), /manifest.json/);
-    await page.evaluate(() => { state.packs = []; catalogType = 'mods'; render(); });
+    await page.locator('[data-modpack-local]').click();
+    await page.locator('#import-pack-settings button[type=submit]').waitFor();
+    await page.waitForFunction(() => !document.querySelector('#import-pack-settings button[type=submit]').disabled);
+    await page.locator('#import-pack-settings [name=name]').fill('Imported ZIP');
+    await page.locator('#import-pack-settings [name=loader]').selectOption('Fabric');
+    await page.locator('#import-pack-settings [name=loaderVersion]').fill('0.16.0');
+    await page.locator('#import-pack-settings button[type=submit]').click();
+    await page.waitForFunction(() => window.packImportCall && !document.querySelector('#modal').open);
+    assert.deepEqual(await page.evaluate(() => window.packImportCall), { token: 'selected-archive', settings: { name: 'Imported ZIP', version: '1.21.1', loader: 'Fabric', loaderVersion: '0.16.0' } });
+    assert.equal(await page.evaluate(() => state.packs.some(pack => pack.name === 'Imported ZIP')), true);
+    await page.evaluate(() => { state.packs = []; catalogType = 'mods'; go('mods'); });
     assert.equal(await page.locator('#manual-content-form').count(), 0);
     assert.equal(await page.locator('.manual-content-panel [data-action=create]').count(), 1);
     await page.evaluate(() => { state.language = 'ru'; catalogType = 'resources'; render(); });

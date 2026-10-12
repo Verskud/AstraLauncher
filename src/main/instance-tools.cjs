@@ -1,7 +1,8 @@
 const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
 const {instanceFolder,validateProfile}=require('./game-loader.cjs');
 const {hashFile}=require('./game-files.cjs');
-const {openZip,safePath}=require('./zip-reader.cjs');
+const {safePath}=require('./zip-reader.cjs');
+const {createModpackInstaller}=require('./modpack.cjs');
 const {writeZip}=require('./zip-writer.cjs');
 const excluded=new Set(['logs','crash-reports','.astra-natives','astra-pack.json','astra-skins.json','launcher_accounts.json','accounts.json','integrations.json','.git','.env']);
 function portableProfile(input,id=input.id){
@@ -54,16 +55,7 @@ function createInstanceTools(root,{download,nativeImage,api=modrinthApi}={}){
  const temp=filename+'.astra-'+crypto.randomUUID()+'.tmp';
  try{await writeZip(temp,[{name:'astra-export.json',bytes:Buffer.from(JSON.stringify({format:'astra-instance-v1',profile}))},...files.map(file=>({...file,name:'instance/'+file.name}))]);await fs.rename(temp,filename);return{files:files.length,path:filename};}finally{await fs.rm(temp,{force:true}).catch(()=>{});}
  });}
- async function importZip(filename){return exclusive(async()=>{
- const zip=await openZip(filename,{maxEntry:1024*1024*1024,maxTotal:8*1024*1024*1024}),id=crypto.randomUUID(),target=instanceFolder(root,id);
- try{
- const manifest=zip.entries.find(entry=>entry.name==='astra-export.json');if(!manifest||manifest.unpacked>100000){if(zip.entries.some(entry=>entry.name==='manifest.json'))throw new Error('CurseForge ZIP содержит список модов для загрузки. Автоматический импорт пока недоступен. Открой CurseForge в каталоге, создай сборку с нужной версией и добавь скачанные моды кнопкой «Добавить файлы».');throw new Error('Это не ZIP-сборка ASTRA. Для импорта нужен ASTRA ZIP или Modrinth .mrpack.');}
- const data=JSON.parse((await zip.read(manifest)).toString('utf8'));if(data.format!=='astra-instance-v1')throw new Error('Неподдерживаемый формат ZIP.');
- const profile=portableProfile(data.profile,id);await fs.mkdir(target,{recursive:true});
- for(const entry of zip.entries){if(entry.isDirectory||entry===manifest)continue;if(!entry.name.startsWith('instance/'))throw new Error('Некорректный путь в ZIP.');const relative=safePath(entry.name.slice(9));if(relative.split('/').some(part=>excluded.has(part)))throw new Error('В архиве найден служебный файл.');const output=path.join(target,...relative.split('/'));await fs.mkdir(path.dirname(output),{recursive:true});await fs.writeFile(output,await zip.read(entry),{flag:'wx'});}
- await fs.writeFile(path.join(target,'astra-pack.json'),JSON.stringify(profile),{flag:'wx'});return profile;
- }catch(error){await fs.rm(target,{recursive:true,force:true});throw error;}finally{await zip.close();}
- });}
+ async function importZip(filename){return exclusive(async()=>(await createModpackInstaller({userData:root}).install({path:filename})).profile);}
  async function checkUpdates(profile){
  validateProfile(profile);const directory=path.join(instanceFolder(root,profile.id),'mods');
  let entries;try{entries=await fs.readdir(directory);}catch(error){if(error.code==='ENOENT')return{updates:[],checked:0,unmatched:0,disabled:0};throw error;}

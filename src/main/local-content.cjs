@@ -26,7 +26,7 @@ async function inspect(filename, kind, profile) {
       try { const data = JSON.parse((await zip.read(curseManifest)).toString('utf8')); cursePack = data.manifestType === 'minecraftModpack' || Boolean(data.minecraft && Array.isArray(data.files)); } catch {}
     }
     if (cursePack || files.some(entry => ['modrinth.index.json', 'astra-export.json'].includes(entry.name))) {
-      throw new Error('Это архив сборки, а не отдельный мод или пак. CurseForge ZIP с manifest.json содержит ссылки на моды и пока не устанавливается автоматически.');
+      throw new Error('Это архив сборки, а не отдельный мод или пак. Открой «Мои сборки → Импортировать» и выбери этот ZIP или .mrpack.');
     }
     if (kind === 'resources') {
       const manifest = files.find(entry => entry.name === 'pack.mcmeta');

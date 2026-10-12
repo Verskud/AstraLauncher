@@ -7,7 +7,7 @@ const source = path.join(root, 'website', 'dist');
 const target = path.join(root, 'src', 'renderer', 'legal');
 await fs.mkdir(target, { recursive: true });
 for (const name of ['privacy', 'terms', 'licenses']) {
-  const page = await fs.readFile(path.join(source, name + '.html'), 'utf8');
+  const page = await fs.readFile(path.join(source, 'ru', name + '.html'), 'utf8');
   const main = page.match(/<main\b[^>]*>[\s\S]*?<\/main>/)?.[0];
   if (!main || /\{\{[A-Z_]+\}\}/.test(main)) throw new Error('Incomplete legal document: ' + name);
   const title = page.match(/<title>(.*?)<\/title>/)[1];
