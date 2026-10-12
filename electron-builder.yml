@@ -6,6 +6,8 @@ directories:
 files:
   - src/**/*
   - package.json
+  - LICENSE
+  - NOTICE.md
 asar: true
 npmRebuild: false
 win:

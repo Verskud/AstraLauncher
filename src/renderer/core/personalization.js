@@ -233,6 +233,20 @@ async function applyCustomFont(info) {
   loadedCustomFont = face;
   document.documentElement.style.fontFamily = '"Astra Custom", Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 }
+const legalCopy = {
+  ru: ['Документы проекта', 'Данные и конфиденциальность', 'Условия использования', 'Лицензии компонентов', 'Читать', 'Исходный код', 'Сайт ASTRA', 'Открыть'],
+  en: ['Project documents', 'Data and privacy', 'Terms of use', 'Component licenses', 'Read', 'Source code', 'ASTRA website', 'Open'],
+  de: ['Projektdokumente', 'Daten und Datenschutz', 'Nutzungsbedingungen', 'Komponentenlizenzen', 'Lesen', 'Quellcode', 'ASTRA-Website', 'Öffnen'],
+  fr: ['Documents du projet', 'Données et confidentialité', 'Conditions d’utilisation', 'Licences des composants', 'Lire', 'Code source', 'Site ASTRA', 'Ouvrir'],
+  es: ['Documentos del proyecto', 'Datos y privacidad', 'Condiciones de uso', 'Licencias de componentes', 'Leer', 'Código fuente', 'Sitio de ASTRA', 'Abrir'],
+  ko: ['프로젝트 문서', '데이터 및 개인정보 보호', '이용 약관', '구성 요소 라이선스', '읽기', '소스 코드', 'ASTRA 웹사이트', '열기'],
+  ja: ['プロジェクト文書', 'データとプライバシー', '利用規約', 'コンポーネントのライセンス', '読む', 'ソースコード', 'ASTRA のサイト', '開く'],
+  'zh-CN': ['项目文档', '数据与隐私', '使用条款', '组件许可证', '阅读', '源代码', 'ASTRA 网站', '打开'],
+  'zh-TW': ['專案文件', '資料與隱私', '使用條款', '元件授權', '閱讀', '原始碼', 'ASTRA 網站', '開啟'],
+  ar: ['وثائق المشروع', 'البيانات والخصوصية', 'شروط الاستخدام', 'تراخيص المكونات', 'قراءة', 'الشيفرة المصدرية', 'موقع ASTRA', 'فتح'],
+  'de-CH': ['Projektdokumente', 'Daten und Datenschutz', 'Nutzungsbedingungen', 'Komponentenlizenzen', 'Lesen', 'Quellcode', 'ASTRA-Website', 'Öffnen'],
+  nb: ['Prosjektdokumenter', 'Data og personvern', 'Bruksvilkår', 'Komponentlisenser', 'Les', 'Kildekode', 'ASTRA-nettsted', 'Åpne'],
+};
 settingsPage = function () {
   const navigation = tabs([['general',t('general')],['appearance',t('appearance')],['game',t('game')],['about',t('about')]], settingsTab, 'data-settings-tab');
   const heading = `<section class="page-intro"><div><div class="eyebrow">ASTRA</div><h1>${t('settings')}</h1><p>${t('settingsIntro')}</p></div><span class="autosave">${icon('check')} ${t('autoSave')}</span></section>`;
@@ -255,7 +269,8 @@ settingsPage = function () {
     const limit = [3, 5, 10].includes(Number(state.backupLimit)) ? Number(state.backupLimit) : 5;
     content = `<h2>${t('gameTitle')}</h2>${settingRow(t('memory'),memoryHint,`<div class="range-wrap"><input aria-label="${t('memory')}" type="range" id="memory" min="2" max="16" step="1" value="${state.memory}"><output id="memory-value">${state.memory} GB</output></div>`)}${settingRow('Java',javaHint,`<span class="setting-value">${automatic}</span>`)}${settingRow(t('backups'),backupHint,`<label class="switch"><input aria-label="${t('backups')}" type="checkbox" id="backups" ${state.backups!==false?'checked':''}><span></span></label>`)}${settingRow(retentionTitle,retentionHint,`<select id="backup-limit" aria-label="${retentionTitle}">${[3,5,10].map(count=>`<option value="${count}" ${limit===count?'selected':''}>${count}</option>`).join('')}</select>`)}`;
   } else {
-    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.27</span><p>${t('aboutIntro')}</p></div>${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
+    const [heading,privacy,terms,licenses,read,source,website,open] = legalCopy[currentLanguage()] || legalCopy.en;
+    content = `<div class="about-brand"><img src="assets/astra-icon.png" alt="Astra"><h2>AstraLauncher</h2><span>Desktop preview · 0.9.28 · MIT</span><p>${t('aboutIntro')}</p></div><h2>${heading}</h2>${[['privacy',privacy],['terms',terms],['licenses',licenses]].map(([kind,title]) => settingRow(title, 'Русский · HTML',`<button class="button secondary" data-legal="${kind}">${read}</button>`)).join('')}${settingRow(source,'GitHub · MIT',`<button class="button secondary" data-legal="source">${open}</button>`)}${settingRow(website,'ASTRA',`<button class="button secondary" data-legal="website">${open}</button>`)}${settingRow(t('supportProject'),t('supportHint'),`<button class="text-button" data-action="support">♡ ${t('support')}</button>`)}<div class="quiet-note">${icon('info')} ${t('unofficial')}</div>`;
   }
   return `${heading}${navigation}<div class="settings-panel">${content}</div>`;
 };
@@ -380,6 +395,11 @@ document.addEventListener('click', async event => {
 });
 document.addEventListener('input', event => {
   if (event.target.id === 'memory' && $('#memory-value')) $('#memory-value').textContent = `${state.memory} GB`;
+});
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-legal]');
+  if (!button) return;
+  window.astraDesktop.openLegalDocument(button.dataset.legal).catch(error => toast(humanError(error)));
 });
 render();
 window.astraDesktop?.customFontStatus?.().then(applyCustomFont).then(() => { if (page === 'settings' && settingsTab === 'appearance') render(); }).catch(error => console.warn('Custom font could not be loaded:', error));

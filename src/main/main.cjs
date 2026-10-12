@@ -119,6 +119,7 @@ if (!app.requestSingleInstanceLock()) {
       if (!trustedSender(event)) throw new Error('Недоверенный источник запроса.');
       return handler(...args);
     });
+    guarded('legal:open', kind => require('./legal.cjs').openLegalDocument(kind, mainWindow));
     guarded('catalog:search', args => {
       const request = { source: args?.source, kind: args?.kind, query: args?.query, offset: args?.offset };
       if (request.source === 'modrinth') return catalog.searchModrinth(request);

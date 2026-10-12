@@ -8,3 +8,6 @@ release-next/
 .env.*
 !.env.example
 tools/.*-result.json
+website/dist/
+website/docs/preview-*.png
+website/.openai/
