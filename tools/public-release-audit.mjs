@@ -16,7 +16,7 @@ const patterns = [
   ['personal email', /[A-Za-z0-9._%+-]+@(?:gmail|outlook|hotmail|yahoo)\.[A-Za-z]{2,}/i],
   ['literal secret', /(?:api[_-]?key|client[_-]?secret|password|refresh[_-]?token|access[_-]?token)\s*[:=]\s*["'][A-Za-z0-9_+\/-]{24,}["']/i],
 ];
-const findings = [];
+const findings = [], noticesWithAuthorContacts = [];
 let offset = 0;
 for (const id of blobs) {
   const end = content.indexOf(10, offset);
@@ -25,7 +25,12 @@ for (const id of blobs) {
   offset = end + 1 + size + 1;
   if (bytes.includes(0)) continue;
   const text = bytes.toString('utf8');
-  for (const [kind, expression] of patterns) if (expression.test(text)) findings.push({ kind, path: paths.get(id), object: id.slice(0, 10) });
+  for (const [kind, expression] of patterns) if (expression.test(text)) {
+    const finding = { kind, path: paths.get(id), object: id.slice(0, 10) };
+    // Third-party copyright notices intentionally retain their authors' contacts.
+    if (kind === 'personal email' && /^(?:src\/renderer\/legal|website\/src)\/licenses\//.test(finding.path)) noticesWithAuthorContacts.push(finding.path);
+    else findings.push(finding);
+  }
 }
-console.log(JSON.stringify({ reachableBlobs: blobs.length, findings }, null, 2));
+console.log(JSON.stringify({ reachableBlobs: blobs.length, findings, noticesWithAuthorContacts }, null, 2));
 if (findings.length) process.exitCode = 1;
