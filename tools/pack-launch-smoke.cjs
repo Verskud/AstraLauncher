@@ -1,7 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { launch, status } = require('../src/main/game-launch.cjs');
+const { launch, status, stop, consoleSnapshot } = require('../src/main/game-launch.cjs');
 
 (async () => {
   const sourceRoot = path.join(process.env.APPDATA, 'AstraLauncher');
@@ -32,13 +32,15 @@ const { launch, status } = require('../src/main/game-launch.cjs');
       let log = '';
       try { log = await fs.readFile(path.join(target, 'logs', 'latest.log'), 'utf8'); } catch {}
       if (/Created: .*textures\/atlas/.test(log)) {
-        console.log('PACK STARTUP OK: ' + profile.name + ', ' + profile.loader + ' ' + profile.loaderVersion + ', texture atlas initialized');
+        if (!consoleSnapshot().text.length) throw new Error('Live game console has no output.');
+        console.log('PACK STARTUP OK: ' + profile.name + ', ' + profile.loader + ' ' + profile.loaderVersion + ', texture atlas initialized; live console contains game output');
         return;
       }
     }
     throw new Error('Startup check timed out.');
   } finally {
-    if (startedPid && status().pid === startedPid) { process.kill(startedPid); await new Promise(resolve => setTimeout(resolve, 3000)); }
+    if (startedPid && status().pid === startedPid) { await stop(id, status().sessionId); await new Promise(resolve => setTimeout(resolve, 1000)); }
+    if (!path.resolve(root).startsWith(path.resolve(__dirname) + path.sep + '.launch-pack-')) throw new Error('Unsafe test folder');
     await fs.rm(root, { recursive: true, force: true });
   }
 })().catch(error => { console.error(error.message); process.exitCode = 1; });

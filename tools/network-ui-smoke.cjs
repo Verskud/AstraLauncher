@@ -77,7 +77,7 @@ async function run(){
  const archiveStatus=await page.locator('#modpack-status').innerText();assert.match(archiveStatus,/5\.0 МБ \/ 10\.0 МБ/);assert.match(archiveStatus,/1\.0 МБ\/с/);assert.doesNotMatch(archiveStatus,/0 из 0/);assert.equal(await page.locator('#modpack-progress-bar').evaluate(element=>element.style.width),'50%');
  await page.evaluate(()=>{modpackProgressView({phase:'resolving',message:'Получаем список файлов…'});});assert.doesNotMatch(await page.locator('#modpack-status').innerText(),/0 из 0/);
  await page.evaluate(()=>{modpackPending=false;modal.close();});
- await page.evaluate(()=>{window.astraDesktop.openGameLog=async id=>{window.openedGameLog=id;};window.testGameProgress({phase:'error',profileId:state.packs[0].id,message:'Игра завершилась с кодом 1.',detail:'Exception: <script>alert(1)</script>'});});
+ await page.evaluate(()=>{state.consoleMode='manual';window.astraDesktop.openGameLog=async id=>{window.openedGameLog=id;};window.testGameProgress({phase:'error',profileId:state.packs[0].id,message:'Игра завершилась с кодом 1.',detail:'Exception: <script>alert(1)</script>'});});
  assert.match(await page.locator('#modal pre').innerText(),/<script>/);assert.equal(await page.locator('#modal pre script').count(),0);await page.locator('[data-launch-log]').click();assert.equal(await page.evaluate(()=>window.openedGameLog),await page.evaluate(()=>state.packs[0].id));await page.locator('#modal').evaluate(element=>element.close());
  await page.waitForFunction(()=>!document.querySelector('#modal').open);
  await require('./design-ui-check.cjs')(page);

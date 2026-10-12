@@ -17,10 +17,10 @@ const consume = async (response, touch) => {
 };
 test('ongoing download outlives the idle timeout', async () => {
   await serve(async (_request, response) => {
-    for (let i = 0; i < 6; i++) { response.write('data'); await delay(30); }
+    for (let i = 0; i < 12; i++) { response.write('data'); await delay(100); }
     response.end();
   }, async url => {
-    assert.equal(await withDownloadResponse(url, {}, consume, { idleTimeoutMs: 100 }), 24);
+    assert.equal(await withDownloadResponse(url, {}, consume, { idleTimeoutMs: 700 }), 48);
   });
 });
 test('a stalled response body times out', async () => {

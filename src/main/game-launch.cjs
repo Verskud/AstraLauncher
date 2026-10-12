@@ -10,8 +10,10 @@ const { getJava } = require('./game-java.cjs');
 const microsoft = require('./microsoft.cjs');
 const { relativePath } = require('./game-files.cjs');
 const { checkModFolder } = require('./mod-compat.cjs');
+const { createGameSession } = require('./game-session.cjs');
 
 let running = null;
+let preparing = false;
 function offlineAccount(name) {
   if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) throw new Error('Для локального запуска укажи имя из 3–16 латинских букв, цифр или _.');
   const hash = crypto.createHash('md5').update(`OfflinePlayer:${name}`).digest();
@@ -107,7 +109,13 @@ function mergeLibraries(base, overlay) {
 }
 async function launch(profile, context) {
   validateProfile(profile);
-  if (running) throw new Error('Игра уже запущена.');
+  if (preparing || running?.status().running) throw new Error('Игра уже запускается или запущена.');
+  preparing = true;
+  try { return await prepareLaunch(profile, context); }
+  finally { preparing = false; }
+}
+async function prepareLaunch(profile, context) {
+  if (running) await running.flushed;
   const { userData, minecraftRoot, onProgress } = context;
   const marker = relativePath(minecraftRoot, `versions/${profile.version}/installed.json`);
   try { await fs.access(marker); } catch { throw new Error(`Сначала скачай Minecraft ${profile.version} в сборке.`); }
@@ -135,7 +143,7 @@ async function launch(profile, context) {
     extraJvm.push(`-javaagent:${await require('./ely-account.cjs').injector(minecraftRoot)}=ely.by`);
   }
   const substitutions = {
-    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: '1.0.0',
+    natives_directory: natives, launcher_name: 'ASTRA', launcher_version: require('../../package.json').version,
     classpath: classpath.join(path.delimiter), classpath_separator: path.delimiter,
     library_directory: path.join(minecraftRoot, 'libraries'),
     auth_player_name: account.name, version_name: loader?.id || profile.version,
@@ -162,13 +170,17 @@ async function launch(profile, context) {
   onProgress({ phase: 'starting', message: `Запускаем ${profile.name || 'Minecraft'}…` });
   const javaw = path.join(path.dirname(java), 'javaw.exe');
   const executable = await fs.access(javaw).then(() => javaw, () => java);
-  const child = spawn(executable, params, { cwd: directory, windowsHide: false, stdio: ['ignore', 'pipe', 'pipe'] });
-  running = { child, id: profile.id, log: '' };
-  for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { if (running?.child === child) { const text=running.log+chunk.toString();running.log=(account.token.length>20?text.replaceAll(account.token,'[token]'):text).slice(-8000); } });
   const launchLog = path.join(directory, 'astra-launch.log');
-  child.on('error', async error => { if (running?.child === child) { await fs.writeFile(launchLog, `${running.log}\n${error.message}`, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: 'error', message: `${error.message} Журнал: ${launchLog}` }); } });
-  child.on('close', async code => { if (running?.child === child) { const log = running.log; await fs.writeFile(launchLog, log, { mode: 0o600 }).catch(() => {}); running = null; onProgress({ phase: code === 0 ? 'closed' : 'error', profileId: profile.id, detail: log.split(/\r?\n/).filter(line => /Exception|Caused by:|ERROR|requires|incompatible/i.test(line)).slice(-12).join('\n'), message: code === 0 ? 'Игра закрыта.' : `Игра завершилась с кодом ${code}.` }); } });
+  await fs.copyFile(launchLog, path.join(directory, 'astra-launch.previous.log')).catch(error => { if (error.code !== 'ENOENT') throw error; });
+  const child = spawn(executable, params, { cwd: directory, windowsHide: false, stdio: ['ignore', 'pipe', 'pipe'] });
+  running = createGameSession(child, { profileId: profile.id, name: profile.name, filename: launchLog, token: account.token, onExit: ({ stopped, code, failure, text }) => {
+    onProgress({ phase: stopped ? 'stopped' : code === 0 ? 'closed' : 'error', profileId: profile.id, detail: text.split(/\r?\n/).filter(line => /Exception|Caused by:|ERROR|requires|incompatible/i.test(line)).slice(-12).join('\n'), message: stopped ? 'Игра остановлена.' : code === 0 ? 'Игра закрыта.' : failure || `Игра завершилась с кодом ${code}.` });
+  } });
+  await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
+  onProgress({ phase: 'running', profileId: profile.id, message: 'Игра запущена.' });
   return { started: true, profileId: profile.id };
 }
-function status() { return running ? { running: true, profileId: running.id, pid: running.child.pid } : { running: false }; }
-module.exports = { launch, status, offlineAccount, matchesRules, expand, args, LAUNCH_FEATURES, zipNativeFiles };
+function status() { return running ? running.status() : { running: false }; }
+function consoleSnapshot() { return running ? running.snapshot() : { running: false, text: '', revision: 0 }; }
+function stop(profileId, sessionId) { return running ? running.stop(profileId, sessionId) : Promise.resolve({ stopped: false }); }
+module.exports = { launch, status, consoleSnapshot, stop, offlineAccount, matchesRules, expand, args, LAUNCH_FEATURES, zipNativeFiles };

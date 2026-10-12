@@ -38,7 +38,7 @@ async function downloadCurseForgeFile(item, staging, { signal, onProgress = () =
       let address = `https://www.curseforge.com/api/v1/mods/${item.projectID}/files/${item.fileID}/download`;
       for (let redirects = 0; redirects <= 5; redirects++) {
         signal?.throwIfAborted();
-        const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/1.0.1' } }, async (response, touch) => {
+        const result = await withDownloadResponse(address, { redirect: 'manual', signal, headers: { 'User-Agent': 'AstraLauncher/1.0.2' } }, async (response, touch) => {
           if ([301,302,303,307,308].includes(response.status)) {
             await response.body?.cancel();
             if (redirects === 5 || !response.headers.get('location')) throw new Error('Некорректное перенаправление CurseForge.');

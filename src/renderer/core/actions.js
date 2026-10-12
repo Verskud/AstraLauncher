@@ -20,7 +20,7 @@ document.addEventListener('click',e=>{
  if(b.dataset.add||b.dataset.mod){addModal(b.dataset.add||b.dataset.mod);return}
  if(b.dataset.install){const p=state.packs.find(p=>p.id===b.dataset.target),m=mods.find(m=>m.id===b.dataset.install);if(p&&m&&p.loader===m.loader&&p.version===m.version&&!p.mods.includes(m.id)){p.mods.push(m.id);save();modal.close();render();toast(`${m.name} добавлен в «${p.name}»`)}return}
  if(b.dataset.remove){const p=state.packs.find(p=>p.id===selectedPack);p.mods=p.mods.filter(id=>id!==b.dataset.remove);save();render();toast('Мод удалён из профиля сборки');return}
- if(b.dataset.launch){const p=state.packs.find(p=>p.id===b.dataset.launch);if(!p)return;if(!['microsoft','ely'].includes(state.accountMode)&&!/^[A-Za-z0-9_]{3,16}$/.test(state.profile)){accountModal();toast('Сначала укажи имя игрока латиницей.');return}window.astraDesktop.launchGame({id:p.id,name:p.name,version:p.version,loader:p.loader,loaderVersion:p.loaderVersion,memory:state.memory,playerName:state.profile,accountMode:['microsoft','ely'].includes(state.accountMode)?state.accountMode:'local',autoBackup:state.backups!==false,backupLimit:Number(state.backupLimit)||5}).then(()=>toast(`Запускаем ${p.name}…`)).catch(error=>toast(humanError(error)));return}
+ if(b.dataset.launch){const p=state.packs.find(p=>p.id===b.dataset.launch);if(!p)return;if(!['microsoft','ely'].includes(state.accountMode)&&!/^[A-Za-z0-9_]{3,16}$/.test(state.profile)){accountModal();toast('Сначала укажи имя игрока латиницей.');return}launchSelected(p);return}
  const action=b.dataset.action;
  if(action==='close')modal.close();
  if(action==='notifications')showModal(`<span class="modal-mark">${icon('bell')}</span><h2>Уведомления</h2><div class="info-box">Новых уведомлений пока нет.</div>`);

@@ -3,7 +3,7 @@ document.documentElement.classList.add('desktop-app');
 render();
 const toolbar = document.querySelector('.toolbar');
 if (toolbar) {
-  toolbar.innerHTML = `<button class="toolbar-notifications" type="button" data-action="notifications" aria-label="Уведомления" title="Уведомления">${icon('bell')}</button>`;
+  toolbar.innerHTML = `${gameToolbar()}<button class="toolbar-notifications" type="button" data-action="notifications" aria-label="Уведомления" title="Уведомления">${icon('bell')}</button>`;
 }
 document.addEventListener('change', event => {
   if (event.target.name !== 'art') return;

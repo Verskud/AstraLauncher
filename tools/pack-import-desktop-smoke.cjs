@@ -4,6 +4,7 @@ const nativeFs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { app, BrowserWindow, dialog } = require('electron');
+process.on('uncaughtException', error => { process.stderr.write(error.stack+'\n'); app.exit(1); });
 const { writeZip } = require('../src/main/zip-writer.cjs');
 
 const root = nativeFs.mkdtempSync(path.join(os.tmpdir(), 'astra-desktop-import-'));
@@ -19,7 +20,7 @@ require(path.resolve('release/win-unpacked/resources/app.asar/src/main/main.cjs'
 app.on('quit', () => {
   clearTimeout(timeout);
   assert.ok(path.resolve(root).startsWith(path.resolve(os.tmpdir()) + path.sep + 'astra-desktop-import-'));
-  nativeFs.rmSync(root, { recursive: true, force: true });
+  try { nativeFs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch {}
   process.exitCode = exitCode;
 });
 

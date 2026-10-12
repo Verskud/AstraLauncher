@@ -1,4 +1,4 @@
-# AstraLauncher 1.0.1
+# AstraLauncher 1.0.2
 
 A free, independent Minecraft: Java Edition launcher for Windows x64. The project is open source under the [MIT License](LICENSE). Third-party notices are available in [NOTICE.md](NOTICE.md). Russian documentation: [README.ru.md](README.ru.md).
 
@@ -12,6 +12,8 @@ A free, independent Minecraft: Java Edition launcher for Windows x64. The projec
 - Manage mods, resource packs, shaders, worlds, and backups.
 - Use a local profile or Ely.by and preview player skins.
 - Customize themes, animations, and fonts.
+- View live game output in the built-in console, search logs, customize text size and wrapping, and force-stop a stuck game. Choose when the console opens in Settings → Minecraft.
+- Launch logs are written while playing (up to 10 MiB per launch); the previous launch log is kept alongside the current one. Force-stopping can discard unsaved world progress.
 
 ## Limitations
 

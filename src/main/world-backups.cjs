@@ -129,6 +129,7 @@ function createWorldBackups(userData, isActive = () => false) {
   }
 
   return {
+    isBusy: () => busy.size > 0,
     list: profileId => listUnlocked(profileId),
     create: (profileId, mode = 'manual', retention = 5) => locked(profileId, () => createUnlocked(profileId, mode === 'auto' ? 'auto' : 'manual', retention)),
     restore: (profileId, backupId) => locked(profileId, () => restoreUnlocked(profileId, backupId)),

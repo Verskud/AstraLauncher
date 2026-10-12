@@ -1,0 +1,67 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const nativeFs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const { app, BrowserWindow, dialog } = require('electron');
+process.on('uncaughtException', error => { process.stderr.write(error.stack+'\n'); app.exit(1); });
+const base = process.argv.includes('--asar') ? path.resolve('release/win-unpacked/resources/app.asar') : path.resolve('.');
+const game = require(path.join(base, 'src/main/game-launch.cjs'));
+const { createGameSession } = require(path.join(base, 'src/main/game-session.cjs'));
+const root = nativeFs.mkdtempSync(path.join(os.tmpdir(),'astra-launch-lifecycle-'));
+app.setPath('userData', root);
+BrowserWindow.prototype.show = function () {};
+const profile = { id:'00000000-0000-0000-0000-000000000001', name:'Test', version:'1.21.1', loader:'Vanilla', playerName:'Player', autoBackup:true };
+const world = path.join(root,'instances',profile.id,'saves','test');
+nativeFs.mkdirSync(world,{recursive:true});
+nativeFs.writeFileSync(path.join(world,'level.dat'),'world fixture');
+const copy = fs.copyFile;
+fs.copyFile = async (...args) => { if (args[0] === path.join(world,'level.dat')) await new Promise(resolve=>setTimeout(resolve,150)); return copy(...args); };
+let session, launches = 0, prompts = 0, response = 0;
+game.launch = async (value, context) => {
+  launches++;
+  const child = spawn(process.execPath,['-e',"console.log('Game fixture ready');setInterval(()=>{},1000)"],{env:{...process.env,ELECTRON_RUN_AS_NODE:'1'},windowsHide:true,stdio:['ignore','pipe','pipe']});
+  session = createGameSession(child,{profileId:value.id,name:value.name,filename:path.join(root,'fixture.log'),onExit:()=>context.onProgress({phase:'stopped',profileId:value.id})});
+  await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
+  return {started:true};
+};
+game.status = () => session?.status() || {running:false};
+game.consoleSnapshot = () => session?.snapshot() || {running:false,text:''};
+game.stop = (id,sessionId) => session.stop(id,sessionId);
+dialog.showMessageBox = async () => { prompts++; return {response}; };
+require(path.join(base,'src/main/main.cjs'));
+const timeout = setTimeout(()=>app.exit(1),30000);
+app.on('quit',()=>{
+  clearTimeout(timeout);
+  if (!path.resolve(root).startsWith(path.resolve(os.tmpdir())+path.sep+'astra-launch-lifecycle-')) return;
+  try { nativeFs.rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:100}); } catch {}
+});
+(async()=>{
+  await app.whenReady();
+  let window;
+  for(let i=0;i<150;i++){window=BrowserWindow.getAllWindows()[0];if(window&&!window.webContents.isLoading())break;await new Promise(resolve=>setTimeout(resolve,100));}
+  const js = code => window.webContents.executeJavaScript(code);
+  await js(`window.launchFixture = ${JSON.stringify(profile)}`);
+  const results = await js(`Promise.all([astraDesktop.launchGame(launchFixture),astraDesktop.launchGame(launchFixture).then(()=>false,()=>true),astraDesktop.createWorldBackup(launchFixture.id).then(()=>false,()=>true),astraDesktop.removeInstance(launchFixture.id).then(()=>false,()=>true)])`);
+  assert.equal(results[0].started,true);
+  assert.deepEqual(results.slice(1),[true,true,true]);
+  assert.equal(launches,1);
+  assert.equal(await fs.readFile(path.join(world,'level.dat'),'utf8'),'world fixture');
+  await new Promise(resolve=>setTimeout(resolve,200));
+  const snapshot = await js('astraDesktop.gameConsole()');
+  assert.match(snapshot.text,/Game fixture ready/);
+  await assert.rejects(js(`astraDesktop.stopGame(launchFixture.id,'stale-session')`));
+  window.close();
+  await new Promise(resolve=>setTimeout(resolve,100));
+  assert.equal(prompts,1);assert.equal(window.isDestroyed(),false);assert.equal(session.status().running,true);
+  await js(`astraDesktop.stopGame(${JSON.stringify(snapshot.profileId)},${JSON.stringify(snapshot.sessionId)})`);
+  await session.flushed;
+  assert.equal(session.status().running,false);
+  const again = await js('astraDesktop.launchGame({...launchFixture,autoBackup:false})');
+  assert.equal(again.started,true);response=1;
+  window.close();
+  await session.closed;await session.flushed;
+  process.stdout.write('Desktop lifecycle OK: trusted IPC, backup launch lock, blocked deletion, live console, stale stop rejected, confirmed launcher close kills only its game.\n');
+  app.quit();
+})().catch(async error=>{process.stderr.write(error.stack+'\n');if(session?.status().running)await session.stop(profile.id,session.status().sessionId);app.exit(1);});

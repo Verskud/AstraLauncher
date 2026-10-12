@@ -73,6 +73,8 @@ contextBridge.exposeInMainWorld('astraDesktop', Object.freeze({
   cancelMinecraftInstall: () => ipcRenderer.invoke('minecraft:cancel'),
   launchGame: profile => ipcRenderer.invoke('game:launch', profile),
   gameStatus: () => ipcRenderer.invoke('game:status'),
+  gameConsole: () => ipcRenderer.invoke('game:console'),
+  stopGame: (profileId, sessionId) => ipcRenderer.invoke('game:stop', profileId, sessionId),
   onGameProgress: callback => {
     if (typeof callback !== 'function') return () => {};
     const listener = (_event, progress) => callback(progress);

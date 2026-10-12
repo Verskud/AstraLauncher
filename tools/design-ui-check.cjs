@@ -15,7 +15,7 @@ module.exports = async function checkDesign(page) {
     window.astraDesktop.minecraftVersions=async()=>({versions:[{id:'1.21.1',type:'release',releaseTime:'2024-08-08T00:00:00Z'}],latest:{release:'1.21.1',snapshot:'1.21.1'},source:'live'});
     window.astraDesktop.launchGame=async args=>{window.designLaunch=args;};
     document.querySelector('#toast').classList.remove('show');
-    state.language='ru';state.theme='dark';go('discover');
+    state.language='ru';state.theme='dark';state.consoleMode='manual';go('discover');
   });
   await page.setViewportSize({width:1180,height:760});
   await capture('home-dark');

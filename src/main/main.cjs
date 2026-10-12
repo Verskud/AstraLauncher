@@ -28,6 +28,8 @@ const supportsGlass = process.platform === 'win32' && Number(os.release().split(
 const entryUrl = pathToFileURL(entry).href;
 let mainWindow = null;
 let windowTheme = null;
+let launchPending = null;
+let closePrompt = false;
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'astra-font', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 
@@ -78,6 +80,27 @@ function createWindow() {
     console.error('Interface failed to load:', code, description);
   });
   mainWindow.on('ready-to-show', () => mainWindow.show());
+  mainWindow.on('close', event => {
+    const current = game.status();
+    if (!current.running && !launchPending) return;
+    event.preventDefault();
+    if (closePrompt) return;
+    closePrompt = true;
+    const window = mainWindow;
+    const pending = !current.running;
+    dialog.showMessageBox(window, {
+      type: 'warning', title: 'AstraLauncher',
+      message: pending ? 'Minecraft is preparing to launch / Подготовка запуска Minecraft' : 'Minecraft is still running / Minecraft ещё запущен',
+      detail: pending ? 'Wait for preparation to finish, then stop the game from the console.\nДождись подготовки, затем останови игру через консоль.' : 'Stopping now may lose unsaved progress.\nПри завершении игры несохранённый прогресс может потеряться.',
+      buttons: pending ? ['OK'] : ['Cancel / Отмена', 'Stop game and close / Завершить игру и закрыть'], defaultId: 0, cancelId: 0,
+    }).then(async result => {
+      if (!pending && result.response === 1) {
+        await game.stop(current.profileId, current.sessionId);
+        if (!window.isDestroyed()) window.close();
+      }
+    }).catch(error => { if (!window.isDestroyed()) dialog.showErrorBox('AstraLauncher', error.message); })
+      .finally(() => { closePrompt = false; });
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.loadFile(entry);
 }
@@ -134,7 +157,7 @@ if (!app.requestSingleInstanceLock()) {
     guarded('ely:manage', () => shell.openExternal('https://ely.by/skins'));
     const checkServer = createServerMonitor();
     const instances = createInstanceTools(app.getPath('userData'), { download: request => download.download(request), nativeImage: require('electron').nativeImage });
-    const editableInstance = () => { if (launchPending || game.status().running || skinInstallPending || friendsInstallPending || catalogInstallPending || instances.isBusy() || modpacks.isBusy()) throw new Error('Дождись завершения операции и закрой игру перед изменением сборки.'); };
+    const editableInstance = () => { if (launchPending || game.status().running || skinInstallPending || friendsInstallPending || catalogInstallPending || instances.isBusy() || modpacks.isBusy() || worldBackups.isBusy()) throw new Error('Дождись завершения операции и закрой игру перед изменением сборки.'); };
     let skinInstallPending = false, friendsInstallPending = false, catalogInstallPending = false;
     const friends = createFriendsPlay({ resolve: download.resolveModrinth, download: download.download, listInstalled: download.listInstalled, onProgress: progress => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('friends:progress', progress);
@@ -308,18 +331,17 @@ if (!app.requestSingleInstanceLock()) {
       return true;
     });
     guarded('game:remove-instance', async profileId => {
-      if (instances.isBusy() || modpacks.isBusy() || skinInstallPending || friendsInstallPending || catalogInstallPending || launchPending) throw new Error('Дождись завершения операции со сборкой.');
+      if (instances.isBusy() || modpacks.isBusy() || skinInstallPending || friendsInstallPending || catalogInstallPending || launchPending || worldBackups.isBusy()) throw new Error('Дождись завершения операции со сборкой.');
       const folder = require('./game-loader.cjs').instanceFolder(app.getPath('userData'), profileId);
       if (game.status().running && game.status().profileId === profileId) throw new Error('Закрой игру перед удалением сборки.');
       await require('node:fs/promises').rm(folder, { recursive: true, force: true });
       return true;
     });
-    let launchPending = null;
-    const worldBackups = createWorldBackups(app.getPath('userData'), profileId => launchPending === profileId || game.status().running && game.status().profileId === profileId);
+    const worldBackups = createWorldBackups(app.getPath('userData'), profileId => game.status().running && game.status().profileId === profileId);
     guarded('world-backups:list', profileId => worldBackups.list(profileId));
-    guarded('world-backups:create', profileId => worldBackups.create(profileId));
-    guarded('world-backups:restore', (profileId, backupId) => worldBackups.restore(profileId, backupId));
-    guarded('world-backups:remove', (profileId, backupId) => worldBackups.remove(profileId, backupId));
+    guarded('world-backups:create', profileId => { editableInstance(); return worldBackups.create(profileId); });
+    guarded('world-backups:restore', (profileId, backupId) => { editableInstance(); return worldBackups.restore(profileId, backupId); });
+    guarded('world-backups:remove', (profileId, backupId) => { editableInstance(); return worldBackups.remove(profileId, backupId); });
     guarded('world-backups:open-folder', async profileId => {
       const folder = worldBackups.folder(profileId);
       await require('node:fs/promises').mkdir(folder, { recursive: true });
@@ -335,18 +357,20 @@ if (!app.requestSingleInstanceLock()) {
     guarded('minecraft:status', version => installer.status(version));
     guarded('minecraft:cancel', () => installer.cancel());
     guarded('game:launch', async profile => {
+      require('./game-loader.cjs').validateProfile(profile);
+      if (worldBackups.isBusy()) throw new Error('Дождись завершения операции с резервными копиями.');
       if (modpacks.isBusy()) throw new Error('Дождись завершения импорта сборки.');
       if (instances.isBusy()) throw new Error('Дождись завершения операции со сборкой.');
       if (skinInstallPending) throw new Error('Дождись установки поддержки скинов.');
       if (friendsInstallPending) throw new Error('Дождись установки игры с друзьями.');
       if (catalogInstallPending) throw new Error('Дождись установки мода.');
       if (launchPending || game.status().running) throw new Error('Игра уже запускается или запущена.');
-      if (profile?.autoBackup === true) {
-        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', { phase: 'backup', message: 'Создаём резервную копию миров…' });
-        await worldBackups.create(profile.id, 'auto', profile.backupLimit);
-      }
       launchPending = profile.id;
       try {
+        if (profile.autoBackup === true) {
+          if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('game:progress', { phase: 'backup', profileId: profile.id, message: 'Создаём резервную копию миров…' });
+          await worldBackups.create(profile.id, 'auto', profile.backupLimit);
+        }
         const skinName = profile.accountMode === 'ely' ? (await ely.current().status()).name : profile.accountMode === 'microsoft' ? preferences.status().microsoftAccount : profile.playerName || 'Player';
         await skins.prepare(profile,skinName,profile.accountMode === 'ely' ? 'mojang' : undefined);
         return await game.launch(profile, {
@@ -357,7 +381,9 @@ if (!app.requestSingleInstanceLock()) {
         });
       } finally { launchPending = null; }
     });
-    guarded('game:status', () => game.status());
+    guarded('game:status', () => ({ ...game.status(), preparing: Boolean(launchPending), pendingProfileId: launchPending }));
+    guarded('game:console', () => ({ ...game.consoleSnapshot(), preparing: Boolean(launchPending), pendingProfileId: launchPending }));
+    guarded('game:stop', (profileId, sessionId) => game.stop(profileId, sessionId));
     guarded('game:open-log', async id => {
       const filename = path.join(require('./game-loader.cjs').instanceFolder(app.getPath('userData'), id), 'astra-launch.log');
       const stat = await require('node:fs/promises').lstat(filename);
